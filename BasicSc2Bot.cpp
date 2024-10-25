@@ -169,8 +169,8 @@ bool BasicSc2Bot::BuildSpawningPool() {
  * @brief Attempts to build an Extractor structure.
  * This function checks if an Extractor has already been built, then looks
  * for available drones and sufficient minerals. If conditions are met, it finds
- * a vespen geyser near the main Hatchery (within 15 units) and issues a command to build an
- * Extractor on it.
+ * a vespen geyser near the main Hatchery (within 15 units) and issues a command
+ * to build an Extractor on it.
  *
  * @return true if an Extractor was successfully queued for construction or
  * has been built before, false otherwise.
@@ -184,17 +184,41 @@ bool BasicSc2Bot::BuildExtractor() {
     Units drones = observation->GetUnits(Unit::Alliance::Self,
                                          IsUnit(UNIT_TYPEID::ZERG_DRONE));
     if (!drones.empty() && observation->GetMinerals() >= 25) {
-        Units geysers = observation->GetUnits(Unit::Alliance::Neutral,
-                                              IsUnit(UNIT_TYPEID::NEUTRAL_VESPENEGEYSER));
+        Units geysers =
+            observation->GetUnits(Unit::Alliance::Neutral,
+                                  IsUnit(UNIT_TYPEID::NEUTRAL_VESPENEGEYSER));
         for (const auto &geyser : geysers) {
-            float distance = Distance2D(geyser->pos, observation->GetStartLocation());
+            float distance =
+                Distance2D(geyser->pos, observation->GetStartLocation());
             if (distance < 15) {
-                Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_EXTRACTOR, geyser);
+                Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_EXTRACTOR,
+                                       geyser);
                 built = true;
                 break;
             }
         }
     }
+    return built;
+}
+
+bool BasicSc2Bot::BuildHatchery() {
+    static bool built = false;
+    if (built) {
+        return true;
+    }
+    const ObservationInterface *observation = Observation();
+    Units drones = observation->GetUnits(Unit::Alliance::Self,
+                                         IsUnit(UNIT_TYPEID::ZERG_DRONE));
+    if (!drones.empty() && observation->GetMinerals() >= 300) {
+        Point2D buildLocation =
+            FindPlacementForBuilding(ABILITY_ID::BUILD_HATCHERY);
+        if (buildLocation.x != 0 && buildLocation.y != 0) {
+            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY,
+                                   buildLocation);
+            built = true;
+        }
+    }
+
     return built;
 }
 
@@ -230,8 +254,6 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     return Point2D(0, 0);
 }
 
-
-bool BasicSc2Bot::BuildHatchery() { return true; }
 bool BasicSc2Bot::BuildQueen() { return true; }
 bool BasicSc2Bot::BuildRoachWarren() { return true; }
 bool BasicSc2Bot::ResearchMetabolicBoost() { return true; }
