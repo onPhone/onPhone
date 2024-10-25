@@ -355,3 +355,5 @@ MigrationBackup/
 build/
 
 log.txt
+
+compile_commands.json
