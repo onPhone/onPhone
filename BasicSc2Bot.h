@@ -28,9 +28,9 @@ class BasicSc2Bot : public sc2::Agent {
     bool ResearchMetabolicBoost();
     bool BuildRoach();
     bool BuildRavager();
-    sc2::Units getIdleWorkers();
-    sc2::Units getIdleLarva();
-    sc2::Units getConstructedBuildings(sc2::UNIT_TYPEID type);
+    sc2::Units GetIdleWorkers();
+    sc2::Units GetIdleLarva();
+    sc2::Units GetConstructedBuildings(sc2::UNIT_TYPEID type);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
 };
 
