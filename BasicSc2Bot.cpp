@@ -40,37 +40,56 @@ void BasicSc2Bot::OnGameStart() {
 }
 
 /**
- * @brief Executes the bot's logic on each game step.
+ * @brief Executes the bot's main logic on each game step.
  *
- * This function is called on each game step and is responsible for:
- * 1. Checking the current supply.
- * 2. Executing the next item in the build order if conditions are met.
- * 3. Building a Drone if no build order item was executed.
- *
- * The function prioritizes the build order but ensures continuous
- * worker production when the build order is empty or cannot be executed.
+ * This function is called on every game step and is responsible for
+ * executing the current build order. It ensures that the bot continuously
+ * progresses through its planned strategy by calling ExecuteBuildOrder().
  */
-void BasicSc2Bot::OnStep() {
+void BasicSc2Bot::OnStep() { ExecuteBuildOrder(); }
+
+/**
+ * @brief Handles unit creation events.
+ *
+ * This function is called whenever a new unit is created. It checks the type
+ * of the created unit and performs specific actions based on the unit type.
+ *
+ * @param unit Pointer to the newly created unit.
+ */
+void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
+    switch (unit->unit_type.ToType()) {
+    case UNIT_TYPEID::ZERG_EXTRACTOR: {
+        AssignWorkersToExtractor(unit);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+/**
+ * @brief Executes the next item in the build order or builds a Drone.
+ *
+ * This function checks the current supply against the build order requirements.
+ * If the supply meets or exceeds the next build order item's requirement,
+ * it attempts to execute that item. If successful, the item is removed from
+ * the queue. If the supply is insufficient for the next item, it attempts
+ * to build a Drone instead.
+ *
+ * This method ensures continuous unit production by defaulting to Drone
+ * construction when the build order cannot be followed.
+ */
+void BasicSc2Bot::ExecuteBuildOrder() {
     const ObservationInterface *observation = Observation();
-    int currentSupply = observation->GetFoodWorkers();
-    if (!buildOrder.empty()) {
-        if (currentSupply >= buildOrder.front().first) {
-            std::cout << buildOrder.front().first << std::endl;
-            if (buildOrder.front().second()) {
-                buildOrder.pop();
-            }
+    int currentSupply = observation->GetFoodUsed();
+
+    if (!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
+        if (buildOrder.front().second()) {
+            buildOrder.pop();
         }
-        Units units = observation->GetUnits(Unit::Alliance::Self);
-        for (const auto &unit : units) {
-            for (const auto &order : unit->orders) {
-                if (order.ability_id == sc2::ABILITY_ID::TRAIN_DRONE) {
-                    ++currentSupply;
-                }
-            }
-        }
-        if (currentSupply < buildOrder.front().first) {
-            BuildDrone();
-        }
+    } else if (!buildOrder.empty() &&
+               currentSupply < buildOrder.front().first) {
+        BuildDrone();
     }
 }
 
@@ -248,17 +267,11 @@ bool BasicSc2Bot::BuildSpawningPool() {
         if (buildLocation.x != 0 && buildLocation.y != 0) {
             Units spawning_pool =
                 GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-            ;
-            std::cout << "Spawning Pool built: " << spawning_pool.size()
-                      << std::endl;
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL,
                                    buildLocation);
             built = true;
             spawning_pool =
                 GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-            ;
-            std::cout << "Spawning Pool built: " << spawning_pool.size()
-                      << std::endl;
         }
     }
     return built;
@@ -268,8 +281,8 @@ bool BasicSc2Bot::BuildSpawningPool() {
  * @brief Attempts to build an Extractor structure.
  * This function checks if an Extractor has already been built, then looks
  * for available drones and sufficient minerals. If conditions are met, it finds
- * a vespen geyser near the main Hatchery (within 15 units) and issues a command
- * to build an Extractor on it.
+ * a vespene geyser near the main Hatchery (within 15 units) and issues a
+ * command to build an Extractor on it.
  *
  * @return true if an Extractor was successfully queued for construction or
  * has been built before, false otherwise.
@@ -297,14 +310,42 @@ bool BasicSc2Bot::BuildExtractor() {
     return built;
 }
 
+/**
+ * @brief Assigns workers to an Extractor.
+ *
+ * This function assigns up to 3 idle workers to the given Extractor.
+ * It iterates through idle workers and commands them to work on the Extractor
+ * using the SMART ability.
+ *
+ * @param extractor Pointer to the Extractor unit to assign workers to.
+ */
+void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
+    Units workers = GetIdleWorkers();
+    int assignedWorkers = 0;
+    for (const auto &worker : workers) {
+        if (assignedWorkers >= 3)
+            break;
+        Actions()->UnitCommand(worker, ABILITY_ID::SMART, extractor);
+        assignedWorkers++;
+    }
+}
+
+/**
+ * @brief Attempts to build a Hatchery structure.
+ *
+ * This function checks for available idle drones and sufficient minerals.
+ * If conditions are met, it finds a suitable location and issues a command
+ * to build a Hatchery.
+ *
+ * @return bool Returns true if the build command was issued, false otherwise.
+ */
 bool BasicSc2Bot::BuildHatchery() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
     Units drones = GetIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 300) {
-        Point2D buildLocation =
-            FindPlacementForBuilding(ABILITY_ID::BUILD_HATCHERY);
+        Point2D buildLocation = FindExpansionLocation();
         if (buildLocation.x != 0 && buildLocation.y != 0) {
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY,
                                    buildLocation);
@@ -315,6 +356,15 @@ bool BasicSc2Bot::BuildHatchery() {
     return built;
 }
 
+/**
+ * @brief Builds a Roach Warren structure.
+ *
+ * This function attempts to build a Roach Warren if there's an idle Drone
+ * and enough minerals available. It uses FindPlacementForBuilding to determine
+ * a suitable location for the structure.
+ *
+ * @return bool Returns true if the build command was issued, false otherwise.
+ */
 bool BasicSc2Bot::BuildRoachWarren() {
     bool built = false;
 
@@ -331,6 +381,78 @@ bool BasicSc2Bot::BuildRoachWarren() {
     }
 
     return built;
+}
+
+/**
+ * @brief Researches Metabolic Boost upgrade for Zerglings.
+ *
+ * This function attempts to research the Metabolic Boost upgrade if there's a
+ * constructed Spawning Pool and enough resources available.
+ *
+ * @return bool Returns true if the research command was issued, false
+ * otherwise.
+ */
+bool BasicSc2Bot::ResearchMetabolicBoost() {
+    bool built = false;
+
+    const ObservationInterface *observation = Observation();
+    Units spawning_pool =
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    ;
+    if (!spawning_pool.empty() && observation->GetMinerals() >= 100 &&
+        observation->GetVespene() >= 100) {
+        Actions()->UnitCommand(spawning_pool[0],
+                               ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
+        built = true;
+    }
+    return built;
+}
+
+/**
+ * @brief Finds a suitable location for expanding the base.
+ *
+ * This function searches for mineral fields that are not too close to the
+ * starting location and checks if there's enough space to build a Hatchery
+ * nearby. It avoids locations where a Hatchery already exists.
+ *
+ * @return Point2D The coordinates where a new Hatchery can be placed for
+ * expansion. Returns (0, 0) if no suitable location is found.
+ */
+Point2D BasicSc2Bot::FindExpansionLocation() {
+    const ObservationInterface *observation = Observation();
+    Units mineral_fields = observation->GetUnits();
+
+    Point2D start_location = observation->GetStartLocation();
+    float closest_distance = std::numeric_limits<float>::max();
+    Point2D closest_location;
+
+    for (const auto &unit : mineral_fields) {
+        if (unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD &&
+            unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
+            continue;
+        }
+
+        float distance = Distance2D(unit->pos, start_location);
+        if (distance < closest_distance && distance > 10.0f) {
+            Units nearby_units =
+                observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
+                    return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY &&
+                           Distance2D(u.pos, unit->pos) < 10.0f;
+                });
+
+            if (nearby_units.empty()) {
+                Point2D build_location = unit->pos;
+                build_location.x += 7.0f;
+                if (Query()->Placement(ABILITY_ID::BUILD_HATCHERY,
+                                       build_location)) {
+                    closest_distance = distance;
+                    closest_location = build_location;
+                }
+            }
+        }
+    }
+
+    return closest_location;
 }
 
 /**
@@ -361,64 +483,47 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
             }
         }
     }
-
     return Point2D(0, 0);
 }
 
+/**
+ * @brief Retrieves a list of idle worker units (drones).
+ *
+ * This function considers a worker as idle if it has no orders,
+ * or if it's currently gathering resources or returning them.
+ *
+ * @return Units A collection of Unit objects representing idle workers.
+ */
 Units BasicSc2Bot::GetIdleWorkers() {
-    Units idle_workers = Observation()->GetUnits(
-        sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
-            // Check if the unit is a worker (SCV, Drone, or Probe)
-            bool is_worker = unit.unit_type == sc2::UNIT_TYPEID::ZERG_DRONE;
-
-            // Check if the worker has no orders or if its orders do not involve
-            // gathering
-            bool is_truly_idle =
-                unit.orders.empty() ||
-                unit.orders[0].ability_id == sc2::ABILITY_ID::HARVEST_GATHER ||
-                unit.orders[0].ability_id == sc2::ABILITY_ID::HARVEST_RETURN;
-
-            return is_worker && is_truly_idle;
-        });
-    return idle_workers;
+    return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_DRONE &&
+               (unit.orders.empty() ||
+                unit.orders[0].ability_id == ABILITY_ID::HARVEST_GATHER ||
+                unit.orders[0].ability_id == ABILITY_ID::HARVEST_RETURN);
+    });
 }
 
-bool BasicSc2Bot::ResearchMetabolicBoost() {
-    bool built = false;
-
-    const ObservationInterface *observation = Observation();
-    Units spawning_pool =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-    ;
-    if (!spawning_pool.empty() && observation->GetMinerals() >= 100 &&
-        observation->GetVespene() >= 100) {
-        Actions()->UnitCommand(spawning_pool[0],
-                               ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
-        built = true;
-    }
-    return built;
-}
-
+/**
+ * @brief Retrieves a list of idle larva units.
+ *
+ * @return Units A collection of Unit objects representing idle larva.
+ */
 Units BasicSc2Bot::GetIdleLarva() {
-    Units idle_larva = Observation()->GetUnits(
-        sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
-            // Check if the unit is a worker (SCV, Drone, or Probe)
-            bool is_larva = unit.unit_type == sc2::UNIT_TYPEID::ZERG_LARVA;
-
-            // Check if the worker has no orders or if its orders do not involve
-            // gathering
-            bool is_truly_idle = unit.orders.empty();
-
-            return is_larva && is_truly_idle;
-        });
-    return idle_larva;
+    return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_LARVA && unit.orders.empty();
+    });
 }
 
+/**
+ * @brief Retrieves a list of fully constructed buildings of a specific type.
+ *
+ * @param type The UNIT_TYPEID of the building to search for.
+ * @return Units A collection of Unit objects representing the constructed
+ * buildings.
+ */
 Units BasicSc2Bot::GetConstructedBuildings(UNIT_TYPEID type) {
-    Units constructed_buildings = Observation()->GetUnits(
-        sc2::Unit::Alliance::Self, [type](const sc2::Unit &unit) {
+    return Observation()->GetUnits(
+        Unit::Alliance::Self, [type](const Unit &unit) {
             return unit.build_progress == 1.0f && unit.unit_type == type;
         });
-
-    return constructed_buildings;
 }
