@@ -47,7 +47,26 @@ void BasicSc2Bot::OnGameStart() {
  * progresses through its planned strategy by calling ExecuteBuildOrder().
  */
 void BasicSc2Bot::OnStep() { ExecuteBuildOrder(); }
+
+/**
+ * @brief Handles unit creation events.
+ *
+ * This function is called whenever a new unit is created. It checks the type
+ * of the created unit and performs specific actions based on the unit type.
+ *
+ * @param unit Pointer to the newly created unit.
  */
+void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
+    switch (unit->unit_type.ToType()) {
+    case UNIT_TYPEID::ZERG_EXTRACTOR: {
+        AssignWorkersToExtractor(unit);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 /**
  * @brief Executes the next item in the build order or builds a Drone.
  *
@@ -291,6 +310,25 @@ bool BasicSc2Bot::BuildExtractor() {
     return built;
 }
 
+/**
+ * @brief Assigns workers to an Extractor.
+ *
+ * This function assigns up to 3 idle workers to the given Extractor.
+ * It iterates through idle workers and commands them to work on the Extractor
+ * using the SMART ability.
+ *
+ * @param extractor Pointer to the Extractor unit to assign workers to.
+ */
+void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
+    Units workers = GetIdleWorkers();
+    int assignedWorkers = 0;
+    for (const auto &worker : workers) {
+        if (assignedWorkers >= 3)
+            break;
+        Actions()->UnitCommand(worker, ABILITY_ID::SMART, extractor);
+        assignedWorkers++;
+    }
+}
 bool BasicSc2Bot::BuildHatchery() {
     bool built = false;
 
