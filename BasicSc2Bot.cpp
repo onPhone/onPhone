@@ -248,17 +248,11 @@ bool BasicSc2Bot::BuildSpawningPool() {
         if (buildLocation.x != 0 && buildLocation.y != 0) {
             Units spawning_pool =
                 GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-            ;
-            std::cout << "Spawning Pool built: " << spawning_pool.size()
-                      << std::endl;
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL,
                                    buildLocation);
             built = true;
             spawning_pool =
                 GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-            ;
-            std::cout << "Spawning Pool built: " << spawning_pool.size()
-                      << std::endl;
         }
     }
     return built;
@@ -268,8 +262,8 @@ bool BasicSc2Bot::BuildSpawningPool() {
  * @brief Attempts to build an Extractor structure.
  * This function checks if an Extractor has already been built, then looks
  * for available drones and sufficient minerals. If conditions are met, it finds
- * a vespen geyser near the main Hatchery (within 15 units) and issues a command
- * to build an Extractor on it.
+ * a vespene geyser near the main Hatchery (within 15 units) and issues a
+ * command to build an Extractor on it.
  *
  * @return true if an Extractor was successfully queued for construction or
  * has been built before, false otherwise.
@@ -315,6 +309,15 @@ bool BasicSc2Bot::BuildHatchery() {
     return built;
 }
 
+/**
+ * @brief Builds a Roach Warren structure.
+ *
+ * This function attempts to build a Roach Warren if there's an idle Drone
+ * and enough minerals available. It uses FindPlacementForBuilding to determine
+ * a suitable location for the structure.
+ *
+ * @return bool Returns true if the build command was issued, false otherwise.
+ */
 bool BasicSc2Bot::BuildRoachWarren() {
     bool built = false;
 
@@ -330,6 +333,31 @@ bool BasicSc2Bot::BuildRoachWarren() {
         }
     }
 
+    return built;
+}
+
+/**
+ * @brief Researches Metabolic Boost upgrade for Zerglings.
+ *
+ * This function attempts to research the Metabolic Boost upgrade if there's a
+ * constructed Spawning Pool and enough resources available.
+ *
+ * @return bool Returns true if the research command was issued, false
+ * otherwise.
+ */
+bool BasicSc2Bot::ResearchMetabolicBoost() {
+    bool built = false;
+
+    const ObservationInterface *observation = Observation();
+    Units spawning_pool =
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    ;
+    if (!spawning_pool.empty() && observation->GetMinerals() >= 100 &&
+        observation->GetVespene() >= 100) {
+        Actions()->UnitCommand(spawning_pool[0],
+                               ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
+        built = true;
+    }
     return built;
 }
 
