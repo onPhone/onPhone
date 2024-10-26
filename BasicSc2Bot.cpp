@@ -1,5 +1,7 @@
 #include "BasicSc2Bot.h"
 #include <iostream>
+#include <sc2api/sc2_typeenums.h>
+#include <sc2api/sc2_unit_filters.h>
 
 using namespace sc2;
 
@@ -53,6 +55,7 @@ void BasicSc2Bot::OnStep() {
     int currentSupply = observation->GetFoodWorkers();
     if (!buildOrder.empty()) {
         if (currentSupply >= buildOrder.front().first) {
+            std::cout << buildOrder.front().first << std::endl;
             if (buildOrder.front().second()) {
                 buildOrder.pop();
             }
@@ -83,8 +86,7 @@ void BasicSc2Bot::OnStep() {
  */
 bool BasicSc2Bot::BuildDrone() {
     const ObservationInterface *observation = Observation();
-    Units larva = observation->GetUnits(Unit::Alliance::Self,
-                                        IsUnit(UNIT_TYPEID::ZERG_LARVA));
+    Units larva = getIdleLarva();
     if (!larva.empty() && observation->GetMinerals() >= 50 &&
         observation->GetFoodUsed() < observation->GetFoodCap()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_DRONE);
@@ -104,13 +106,12 @@ bool BasicSc2Bot::BuildDrone() {
  * been built before, false otherwise.
  */
 bool BasicSc2Bot::BuildOverlord() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units larva = observation->GetUnits(Unit::Alliance::Self,
-                                        IsUnit(UNIT_TYPEID::ZERG_LARVA));
+    Units larva = getIdleLarva();
     if (!larva.empty() && observation->GetMinerals() >= 100) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_OVERLORD);
         built = true;
@@ -123,23 +124,37 @@ bool BasicSc2Bot::BuildOverlord() {
  *
  * This function checks for available larva and sufficient minerals,
  * then issues a command to train a Zergling if conditions are met.
- * It uses a static flag to ensure only one Zergling is built.
+ * It uses a  flag to ensure only one Zergling is built.
  *
  * @return true if a Zergling was successfully queued for production or has been
  * built before, false otherwise.
  */
 bool BasicSc2Bot::BuildZergling() {
-    static bool built = false;
+    bool built = false;
     if (built) {
+        std::cout << "Zergling already built, returning true" << std::endl;
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units larva = observation->GetUnits(Unit::Alliance::Self,
-                                        IsUnit(UNIT_TYPEID::ZERG_LARVA));
-    if (!larva.empty() && observation->GetMinerals() >= 100 &&
-        observation->GetFoodUsed() < observation->GetFoodCap()) {
-        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_OVERLORD);
+    Units larva = getIdleLarva();
+    Units spawning_pool =
+        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    if (!larva.empty() && observation->GetMinerals() >= 25 &&
+        observation->GetFoodUsed() < observation->GetFoodCap() &&
+        !spawning_pool.empty()) {
+        std::cout << "Building Zergling" << std::endl;
+        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ZERGLING);
         built = true;
+        std::cout << "Zergling built successfully" << std::endl;
+    } else {
+        std::cout << "Unable to build Zergling. Conditions not met:"
+                  << std::endl;
+        std::cout << "Larva available: " << (!larva.empty() ? "Yes" : "No")
+                  << std::endl;
+        std::cout << "Minerals: " << observation->GetMinerals() << "/25"
+                  << std::endl;
+        std::cout << "Food: " << observation->GetFoodUsed() << "/"
+                  << observation->GetFoodCap() << std::endl;
     }
     return built;
 }
@@ -149,21 +164,22 @@ bool BasicSc2Bot::BuildZergling() {
  *
  * This function checks for a hatchery and spawning pool and sufficient
  * minerals, then issues a command to train a Queen if conditions are met. It
- * uses a static flag to ensure only one Queen is built.
+ * uses a  flag to ensure only one Queen is built.
  *
  * @return true if a Queen was successfully queued for production or has been
  * built before, false otherwise.
  */
 bool BasicSc2Bot::BuildQueen() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units hatchery = observation->GetUnits(Unit::Alliance::Self,
-                                           IsUnit(UNIT_TYPEID::ZERG_HATCHERY));
-    Units spawning_pool = observation->GetUnits(
-        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_SPAWNINGPOOL));
+    Units hatchery = getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_HATCHERY);
+    ;
+    Units spawning_pool =
+        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    ;
     if (!hatchery.empty() && !spawning_pool.empty() &&
         observation->GetMinerals() >= 150 &&
         observation->GetFoodUsed() + 1 < observation->GetFoodCap()) {
@@ -178,21 +194,21 @@ bool BasicSc2Bot::BuildQueen() {
  *
  * This function checks for available larva, sufficient minerals, and a roach
  * warren, then issues a command to train a Roach if conditions are met. It uses
- * a static flag to ensure only one Roach is built.
+ * a  flag to ensure only one Roach is built.
  *
  * @return true if a Roach was successfully queued for production or has been
  * built before, false otherwise.
  */
 bool BasicSc2Bot::BuildRoach() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units larva = observation->GetUnits(Unit::Alliance::Self,
-                                        IsUnit(UNIT_TYPEID::ZERG_LARVA));
-    Units roach_warren = observation->GetUnits(
-        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_ROACHWARREN));
+    Units larva = getIdleLarva();
+    Units roach_warren =
+        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
+    ;
     if (!larva.empty() && observation->GetMinerals() >= 75 &&
         observation->GetVespene() >= 25 &&
         observation->GetFoodUsed() < observation->GetFoodCap() &&
@@ -208,21 +224,22 @@ bool BasicSc2Bot::BuildRoach() {
  *
  * This function checks for available roaches, sufficient minerals, and a roach
  * warren, then issues a command to train a Ravager if conditions are met. It
- * uses a static flag to ensure only one Roach is built.
+ * uses a  flag to ensure only one Roach is built.
  *
  * @return true if a Ravager was successfully queued for production or has been
  * built before, false otherwise.
  */
 bool BasicSc2Bot::BuildRavager() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
     Units roaches = observation->GetUnits(Unit::Alliance::Self,
                                           IsUnit(UNIT_TYPEID::ZERG_ROACH));
-    Units roach_warren = observation->GetUnits(
-        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_ROACHWARREN));
+    Units roach_warren =
+        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
+    ;
     if (!roaches.empty() && observation->GetMinerals() >= 25 &&
         observation->GetVespene() >= 75 &&
         observation->GetFoodUsed() < observation->GetFoodCap() &&
@@ -244,20 +261,29 @@ bool BasicSc2Bot::BuildRavager() {
  * has been built before, false otherwise.
  */
 bool BasicSc2Bot::BuildSpawningPool() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units drones = observation->GetUnits(Unit::Alliance::Self,
-                                         IsUnit(UNIT_TYPEID::ZERG_DRONE));
+    Units drones = getIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 200) {
         Point2D buildLocation =
             FindPlacementForBuilding(ABILITY_ID::BUILD_SPAWNINGPOOL);
         if (buildLocation.x != 0 && buildLocation.y != 0) {
+            Units spawning_pool =
+                getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+            ;
+            std::cout << "Spawning Pool built: " << spawning_pool.size()
+                      << std::endl;
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL,
                                    buildLocation);
             built = true;
+            spawning_pool =
+                getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+            ;
+            std::cout << "Spawning Pool built: " << spawning_pool.size()
+                      << std::endl;
         }
     }
     return built;
@@ -274,13 +300,12 @@ bool BasicSc2Bot::BuildSpawningPool() {
  * has been built before, false otherwise.
  */
 bool BasicSc2Bot::BuildExtractor() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units drones = observation->GetUnits(Unit::Alliance::Self,
-                                         IsUnit(UNIT_TYPEID::ZERG_DRONE));
+    Units drones = getIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 25) {
         Units geysers =
             observation->GetUnits(Unit::Alliance::Neutral,
@@ -300,13 +325,12 @@ bool BasicSc2Bot::BuildExtractor() {
 }
 
 bool BasicSc2Bot::BuildHatchery() {
-    static bool built = false;
+    bool built = false;
     if (built) {
         return true;
     }
     const ObservationInterface *observation = Observation();
-    Units drones = observation->GetUnits(Unit::Alliance::Self,
-                                         IsUnit(UNIT_TYPEID::ZERG_DRONE));
+    Units drones = getIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 300) {
         Point2D buildLocation =
             FindPlacementForBuilding(ABILITY_ID::BUILD_HATCHERY);
@@ -350,6 +374,48 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     }
 
     return Point2D(0, 0);
+}
+
+Units BasicSc2Bot::getIdleWorkers() {
+    Units idle_workers = Observation()->GetUnits(
+        sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
+            // Check if the unit is a worker (SCV, Drone, or Probe)
+            bool is_worker = unit.unit_type == sc2::UNIT_TYPEID::ZERG_DRONE;
+
+            // Check if the worker has no orders or if its orders do not involve
+            // gathering
+            bool is_truly_idle =
+                unit.orders.empty() ||
+                unit.orders[0].ability_id == sc2::ABILITY_ID::HARVEST_GATHER ||
+                unit.orders[0].ability_id == sc2::ABILITY_ID::HARVEST_RETURN;
+
+            return is_worker && is_truly_idle;
+        });
+    return idle_workers;
+}
+
+Units BasicSc2Bot::getIdleLarva() {
+    Units idle_larva = Observation()->GetUnits(
+        sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
+            // Check if the unit is a worker (SCV, Drone, or Probe)
+            bool is_larva = unit.unit_type == sc2::UNIT_TYPEID::ZERG_LARVA;
+
+            // Check if the worker has no orders or if its orders do not involve
+            // gathering
+            bool is_truly_idle = unit.orders.empty();
+
+            return is_larva && is_truly_idle;
+        });
+    return idle_larva;
+}
+
+Units BasicSc2Bot::getConstructedBuildings(UNIT_TYPEID type) {
+    Units constructed_buildings = Observation()->GetUnits(
+        sc2::Unit::Alliance::Self, [type](const sc2::Unit &unit) {
+            return unit.build_progress == 1.0f && unit.unit_type == type;
+        });
+
+    return constructed_buildings;
 }
 
 bool BasicSc2Bot::BuildRoachWarren() { return true; }
