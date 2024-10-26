@@ -50,18 +50,25 @@ void BasicSc2Bot::OnGameStart() {
  */
 void BasicSc2Bot::OnStep() {
     const ObservationInterface *observation = Observation();
-    int currentSupply = observation->GetFoodUsed();
-
-    bool buildOrderExecuted = false;
-    if (!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
-        if (buildOrder.front().second()) {
-            buildOrder.pop();
+    int currentSupply = observation->GetFoodWorkers();
+    if (!buildOrder.empty()) {
+        if (currentSupply >= buildOrder.front().first) {
+            if (buildOrder.front().second()) {
+                buildOrder.pop();
+            }
         }
-        buildOrderExecuted = true;
-    }
-
-    if (!buildOrderExecuted) {
-        BuildDrone();
+        Units units = observation->GetUnits(Unit::Alliance::Self);
+        for (const auto &unit : units) {
+            for (const auto &order : unit->orders) {
+                if (order.ability_id == sc2::ABILITY_ID::TRAIN_DRONE) {
+                    ++currentSupply;
+                }
+            }
+        }
+        // 0 to be replaced with current amount of drones being trained
+        if (currentSupply < buildOrder.front().first) {
+            BuildDrone();
+        }
     }
 }
 
@@ -78,7 +85,8 @@ bool BasicSc2Bot::BuildDrone() {
     const ObservationInterface *observation = Observation();
     Units larva = observation->GetUnits(Unit::Alliance::Self,
                                         IsUnit(UNIT_TYPEID::ZERG_LARVA));
-    if (!larva.empty() && observation->GetMinerals() >= 50) {
+    if (!larva.empty() && observation->GetMinerals() >= 50 &&
+        observation->GetFoodUsed() < observation->GetFoodCap()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_DRONE);
         return true;
     }
@@ -128,8 +136,98 @@ bool BasicSc2Bot::BuildZergling() {
     const ObservationInterface *observation = Observation();
     Units larva = observation->GetUnits(Unit::Alliance::Self,
                                         IsUnit(UNIT_TYPEID::ZERG_LARVA));
-    if (!larva.empty() && observation->GetMinerals() >= 100) {
+    if (!larva.empty() && observation->GetMinerals() >= 100 &&
+        observation->GetFoodUsed() < observation->GetFoodCap()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_OVERLORD);
+        built = true;
+    }
+    return built;
+}
+
+/**
+ * @brief Attempts to build a Queen unit.
+ *
+ * This function checks for a hatchery and spawning pool and sufficient
+ * minerals, then issues a command to train a Queen if conditions are met. It
+ * uses a static flag to ensure only one Queen is built.
+ *
+ * @return true if a Queen was successfully queued for production or has been
+ * built before, false otherwise.
+ */
+bool BasicSc2Bot::BuildQueen() {
+    static bool built = false;
+    if (built) {
+        return true;
+    }
+    const ObservationInterface *observation = Observation();
+    Units hatchery = observation->GetUnits(Unit::Alliance::Self,
+                                           IsUnit(UNIT_TYPEID::ZERG_HATCHERY));
+    Units spawning_pool = observation->GetUnits(
+        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_SPAWNINGPOOL));
+    if (!hatchery.empty() && !spawning_pool.empty() &&
+        observation->GetMinerals() >= 150 &&
+        observation->GetFoodUsed() + 1 < observation->GetFoodCap()) {
+        Actions()->UnitCommand(hatchery[0], ABILITY_ID::TRAIN_QUEEN);
+        built = true;
+    }
+    return built;
+}
+
+/**
+ * @brief Attempts to build a Roach unit.
+ *
+ * This function checks for available larva, sufficient minerals, and a roach
+ * warren, then issues a command to train a Roach if conditions are met. It uses
+ * a static flag to ensure only one Roach is built.
+ *
+ * @return true if a Roach was successfully queued for production or has been
+ * built before, false otherwise.
+ */
+bool BasicSc2Bot::BuildRoach() {
+    static bool built = false;
+    if (built) {
+        return true;
+    }
+    const ObservationInterface *observation = Observation();
+    Units larva = observation->GetUnits(Unit::Alliance::Self,
+                                        IsUnit(UNIT_TYPEID::ZERG_LARVA));
+    Units roach_warren = observation->GetUnits(
+        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_ROACHWARREN));
+    if (!larva.empty() && observation->GetMinerals() >= 75 &&
+        observation->GetVespene() >= 25 &&
+        observation->GetFoodUsed() < observation->GetFoodCap() &&
+        !roach_warren.empty()) {
+        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ROACH);
+        built = true;
+    }
+    return built;
+}
+
+/**
+ * @brief Attempts to build a Ravager unit.
+ *
+ * This function checks for available roaches, sufficient minerals, and a roach
+ * warren, then issues a command to train a Ravager if conditions are met. It
+ * uses a static flag to ensure only one Roach is built.
+ *
+ * @return true if a Ravager was successfully queued for production or has been
+ * built before, false otherwise.
+ */
+bool BasicSc2Bot::BuildRavager() {
+    static bool built = false;
+    if (built) {
+        return true;
+    }
+    const ObservationInterface *observation = Observation();
+    Units roaches = observation->GetUnits(Unit::Alliance::Self,
+                                          IsUnit(UNIT_TYPEID::ZERG_ROACH));
+    Units roach_warren = observation->GetUnits(
+        Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_ROACHWARREN));
+    if (!roaches.empty() && observation->GetMinerals() >= 25 &&
+        observation->GetVespene() >= 75 &&
+        observation->GetFoodUsed() < observation->GetFoodCap() &&
+        !roach_warren.empty()) {
+        Actions()->UnitCommand(roaches[0], ABILITY_ID::MORPH_RAVAGER);
         built = true;
     }
     return built;
@@ -254,8 +352,5 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     return Point2D(0, 0);
 }
 
-bool BasicSc2Bot::BuildQueen() { return true; }
 bool BasicSc2Bot::BuildRoachWarren() { return true; }
 bool BasicSc2Bot::ResearchMetabolicBoost() { return true; }
-bool BasicSc2Bot::BuildRoach() { return true; }
-bool BasicSc2Bot::BuildRavager() { return true; }
