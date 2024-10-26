@@ -50,18 +50,25 @@ void BasicSc2Bot::OnGameStart() {
  */
 void BasicSc2Bot::OnStep() {
     const ObservationInterface *observation = Observation();
-    int currentSupply = observation->GetFoodUsed();
-
-    bool buildOrderExecuted = false;
-    if (!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
-        if (buildOrder.front().second()) {
-            buildOrder.pop();
+    int currentSupply = observation->GetFoodWorkers();
+    if (!buildOrder.empty()) {
+        if (currentSupply >= buildOrder.front().first) {
+            if (buildOrder.front().second()) {
+                buildOrder.pop();
+            }
         }
-        buildOrderExecuted = true;
-    }
-
-    if (!buildOrderExecuted) {
-        BuildDrone();
+        Units units = observation->GetUnits(Unit::Alliance::Self);
+        for (const auto &unit : units) {
+            for (const auto &order : unit->orders) {
+                if (order.ability_id == sc2::ABILITY_ID::TRAIN_DRONE) {
+                    ++currentSupply;
+                }
+            }
+        }
+        // 0 to be replaced with current amount of drones being trained
+        if (currentSupply < buildOrder.front().first) {
+            BuildDrone();
+        }
     }
 }
 
