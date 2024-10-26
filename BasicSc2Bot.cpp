@@ -361,64 +361,47 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
             }
         }
     }
-
     return Point2D(0, 0);
 }
 
+/**
+ * @brief Retrieves a list of idle worker units (drones).
+ *
+ * This function considers a worker as idle if it has no orders,
+ * or if it's currently gathering resources or returning them.
+ *
+ * @return Units A collection of Unit objects representing idle workers.
+ */
 Units BasicSc2Bot::GetIdleWorkers() {
-    Units idle_workers = Observation()->GetUnits(
-        sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
-            // Check if the unit is a worker (SCV, Drone, or Probe)
-            bool is_worker = unit.unit_type == sc2::UNIT_TYPEID::ZERG_DRONE;
-
-            // Check if the worker has no orders or if its orders do not involve
-            // gathering
-            bool is_truly_idle =
-                unit.orders.empty() ||
-                unit.orders[0].ability_id == sc2::ABILITY_ID::HARVEST_GATHER ||
-                unit.orders[0].ability_id == sc2::ABILITY_ID::HARVEST_RETURN;
-
-            return is_worker && is_truly_idle;
-        });
-    return idle_workers;
+    return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_DRONE &&
+               (unit.orders.empty() ||
+                unit.orders[0].ability_id == ABILITY_ID::HARVEST_GATHER ||
+                unit.orders[0].ability_id == ABILITY_ID::HARVEST_RETURN);
+    });
 }
 
-bool BasicSc2Bot::ResearchMetabolicBoost() {
-    bool built = false;
-
-    const ObservationInterface *observation = Observation();
-    Units spawning_pool =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-    ;
-    if (!spawning_pool.empty() && observation->GetMinerals() >= 100 &&
-        observation->GetVespene() >= 100) {
-        Actions()->UnitCommand(spawning_pool[0],
-                               ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
-        built = true;
-    }
-    return built;
-}
-
+/**
+ * @brief Retrieves a list of idle larva units.
+ *
+ * @return Units A collection of Unit objects representing idle larva.
+ */
 Units BasicSc2Bot::GetIdleLarva() {
-    Units idle_larva = Observation()->GetUnits(
-        sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
-            // Check if the unit is a worker (SCV, Drone, or Probe)
-            bool is_larva = unit.unit_type == sc2::UNIT_TYPEID::ZERG_LARVA;
-
-            // Check if the worker has no orders or if its orders do not involve
-            // gathering
-            bool is_truly_idle = unit.orders.empty();
-
-            return is_larva && is_truly_idle;
-        });
-    return idle_larva;
+    return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_LARVA && unit.orders.empty();
+    });
 }
 
+/**
+ * @brief Retrieves a list of fully constructed buildings of a specific type.
+ *
+ * @param type The UNIT_TYPEID of the building to search for.
+ * @return Units A collection of Unit objects representing the constructed
+ * buildings.
+ */
 Units BasicSc2Bot::GetConstructedBuildings(UNIT_TYPEID type) {
-    Units constructed_buildings = Observation()->GetUnits(
-        sc2::Unit::Alliance::Self, [type](const sc2::Unit &unit) {
+    return Observation()->GetUnits(
+        Unit::Alliance::Self, [type](const Unit &unit) {
             return unit.build_progress == 1.0f && unit.unit_type == type;
         });
-
-    return constructed_buildings;
 }
