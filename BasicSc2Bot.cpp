@@ -329,14 +329,23 @@ void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
         assignedWorkers++;
     }
 }
+
+/**
+ * @brief Attempts to build a Hatchery structure.
+ *
+ * This function checks for available idle drones and sufficient minerals.
+ * If conditions are met, it finds a suitable location and issues a command
+ * to build a Hatchery.
+ *
+ * @return bool Returns true if the build command was issued, false otherwise.
+ */
 bool BasicSc2Bot::BuildHatchery() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
     Units drones = GetIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 300) {
-        Point2D buildLocation =
-            FindPlacementForBuilding(ABILITY_ID::BUILD_HATCHERY);
+        Point2D buildLocation = FindExpansionLocation();
         if (buildLocation.x != 0 && buildLocation.y != 0) {
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY,
                                    buildLocation);
@@ -397,6 +406,53 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
         built = true;
     }
     return built;
+}
+
+/**
+ * @brief Finds a suitable location for expanding the base.
+ *
+ * This function searches for mineral fields that are not too close to the
+ * starting location and checks if there's enough space to build a Hatchery
+ * nearby. It avoids locations where a Hatchery already exists.
+ *
+ * @return Point2D The coordinates where a new Hatchery can be placed for
+ * expansion. Returns (0, 0) if no suitable location is found.
+ */
+Point2D BasicSc2Bot::FindExpansionLocation() {
+    const ObservationInterface *observation = Observation();
+    Units mineral_fields = observation->GetUnits();
+
+    Point2D start_location = observation->GetStartLocation();
+    float closest_distance = std::numeric_limits<float>::max();
+    Point2D closest_location;
+
+    for (const auto &unit : mineral_fields) {
+        if (unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD &&
+            unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
+            continue;
+        }
+
+        float distance = Distance2D(unit->pos, start_location);
+        if (distance < closest_distance && distance > 10.0f) {
+            Units nearby_units =
+                observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
+                    return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY &&
+                           Distance2D(u.pos, unit->pos) < 10.0f;
+                });
+
+            if (nearby_units.empty()) {
+                Point2D build_location = unit->pos;
+                build_location.x += 7.0f;
+                if (Query()->Placement(ABILITY_ID::BUILD_HATCHERY,
+                                       build_location)) {
+                    closest_distance = distance;
+                    closest_location = build_location;
+                }
+            }
+        }
+    }
+
+    return closest_location;
 }
 
 /**
