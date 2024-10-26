@@ -40,37 +40,37 @@ void BasicSc2Bot::OnGameStart() {
 }
 
 /**
- * @brief Executes the bot's logic on each game step.
+ * @brief Executes the bot's main logic on each game step.
  *
- * This function is called on each game step and is responsible for:
- * 1. Checking the current supply.
- * 2. Executing the next item in the build order if conditions are met.
- * 3. Building a Drone if no build order item was executed.
- *
- * The function prioritizes the build order but ensures continuous
- * worker production when the build order is empty or cannot be executed.
+ * This function is called on every game step and is responsible for
+ * executing the current build order. It ensures that the bot continuously
+ * progresses through its planned strategy by calling ExecuteBuildOrder().
  */
-void BasicSc2Bot::OnStep() {
+void BasicSc2Bot::OnStep() { ExecuteBuildOrder(); }
+ */
+/**
+ * @brief Executes the next item in the build order or builds a Drone.
+ *
+ * This function checks the current supply against the build order requirements.
+ * If the supply meets or exceeds the next build order item's requirement,
+ * it attempts to execute that item. If successful, the item is removed from
+ * the queue. If the supply is insufficient for the next item, it attempts
+ * to build a Drone instead.
+ *
+ * This method ensures continuous unit production by defaulting to Drone
+ * construction when the build order cannot be followed.
+ */
+void BasicSc2Bot::ExecuteBuildOrder() {
     const ObservationInterface *observation = Observation();
-    int currentSupply = observation->GetFoodWorkers();
-    if (!buildOrder.empty()) {
-        if (currentSupply >= buildOrder.front().first) {
-            std::cout << buildOrder.front().first << std::endl;
-            if (buildOrder.front().second()) {
-                buildOrder.pop();
-            }
+    int currentSupply = observation->GetFoodUsed();
+
+    if (!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
+        if (buildOrder.front().second()) {
+            buildOrder.pop();
         }
-        Units units = observation->GetUnits(Unit::Alliance::Self);
-        for (const auto &unit : units) {
-            for (const auto &order : unit->orders) {
-                if (order.ability_id == sc2::ABILITY_ID::TRAIN_DRONE) {
-                    ++currentSupply;
-                }
-            }
-        }
-        if (currentSupply < buildOrder.front().first) {
-            BuildDrone();
-        }
+    } else if (!buildOrder.empty() &&
+               currentSupply < buildOrder.front().first) {
+        BuildDrone();
     }
 }
 
