@@ -85,7 +85,7 @@ void BasicSc2Bot::OnStep() {
  */
 bool BasicSc2Bot::BuildDrone() {
     const ObservationInterface *observation = Observation();
-    Units larva = getIdleLarva();
+    Units larva = GetIdleLarva();
     if (!larva.empty() && observation->GetMinerals() >= 50 &&
         observation->GetFoodUsed() < observation->GetFoodCap()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_DRONE);
@@ -108,7 +108,7 @@ bool BasicSc2Bot::BuildOverlord() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units larva = getIdleLarva();
+    Units larva = GetIdleLarva();
     if (!larva.empty() && observation->GetMinerals() >= 100) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_OVERLORD);
         built = true;
@@ -130,9 +130,9 @@ bool BasicSc2Bot::BuildZergling() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units larva = getIdleLarva();
+    Units larva = GetIdleLarva();
     Units spawning_pool =
-        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
     if (!larva.empty() && observation->GetMinerals() >= 25 &&
         observation->GetFoodUsed() < observation->GetFoodCap() &&
         !spawning_pool.empty()) {
@@ -156,10 +156,10 @@ bool BasicSc2Bot::BuildQueen() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units hatchery = getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_HATCHERY);
+    Units hatchery = GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_HATCHERY);
     ;
     Units spawning_pool =
-        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
     ;
     if (!hatchery.empty() && !spawning_pool.empty() &&
         observation->GetMinerals() >= 150 &&
@@ -184,9 +184,9 @@ bool BasicSc2Bot::BuildRoach() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units larva = getIdleLarva();
+    Units larva = GetIdleLarva();
     Units roach_warren =
-        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
     ;
     if (!larva.empty() && observation->GetMinerals() >= 75 &&
         observation->GetVespene() >= 25 &&
@@ -215,7 +215,7 @@ bool BasicSc2Bot::BuildRavager() {
     Units roaches = observation->GetUnits(Unit::Alliance::Self,
                                           IsUnit(UNIT_TYPEID::ZERG_ROACH));
     Units roach_warren =
-        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
     ;
     if (!roaches.empty() && observation->GetMinerals() >= 25 &&
         observation->GetVespene() >= 75 &&
@@ -241,13 +241,13 @@ bool BasicSc2Bot::BuildSpawningPool() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units drones = getIdleWorkers();
+    Units drones = GetIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 200) {
         Point2D buildLocation =
             FindPlacementForBuilding(ABILITY_ID::BUILD_SPAWNINGPOOL);
         if (buildLocation.x != 0 && buildLocation.y != 0) {
             Units spawning_pool =
-                getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+                GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
             ;
             std::cout << "Spawning Pool built: " << spawning_pool.size()
                       << std::endl;
@@ -255,7 +255,7 @@ bool BasicSc2Bot::BuildSpawningPool() {
                                    buildLocation);
             built = true;
             spawning_pool =
-                getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+                GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
             ;
             std::cout << "Spawning Pool built: " << spawning_pool.size()
                       << std::endl;
@@ -278,7 +278,7 @@ bool BasicSc2Bot::BuildExtractor() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units drones = getIdleWorkers();
+    Units drones = GetIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 25) {
         Units geysers =
             observation->GetUnits(Unit::Alliance::Neutral,
@@ -301,7 +301,7 @@ bool BasicSc2Bot::BuildHatchery() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units drones = getIdleWorkers();
+    Units drones = GetIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 300) {
         Point2D buildLocation =
             FindPlacementForBuilding(ABILITY_ID::BUILD_HATCHERY);
@@ -319,7 +319,7 @@ bool BasicSc2Bot::BuildRoachWarren() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units drones = getIdleWorkers();
+    Units drones = GetIdleWorkers();
     if (!drones.empty() && observation->GetMinerals() >= 150) {
         Point2D buildLocation =
             FindPlacementForBuilding(ABILITY_ID::BUILD_ROACHWARREN);
@@ -365,7 +365,7 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     return Point2D(0, 0);
 }
 
-Units BasicSc2Bot::getIdleWorkers() {
+Units BasicSc2Bot::GetIdleWorkers() {
     Units idle_workers = Observation()->GetUnits(
         sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
             // Check if the unit is a worker (SCV, Drone, or Probe)
@@ -388,7 +388,7 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
 
     const ObservationInterface *observation = Observation();
     Units spawning_pool =
-        getConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
     ;
     if (!spawning_pool.empty() && observation->GetMinerals() >= 100 &&
         observation->GetVespene() >= 100) {
@@ -399,7 +399,7 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
     return built;
 }
 
-Units BasicSc2Bot::getIdleLarva() {
+Units BasicSc2Bot::GetIdleLarva() {
     Units idle_larva = Observation()->GetUnits(
         sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
             // Check if the unit is a worker (SCV, Drone, or Probe)
@@ -414,7 +414,7 @@ Units BasicSc2Bot::getIdleLarva() {
     return idle_larva;
 }
 
-Units BasicSc2Bot::getConstructedBuildings(UNIT_TYPEID type) {
+Units BasicSc2Bot::GetConstructedBuildings(UNIT_TYPEID type) {
     Units constructed_buildings = Observation()->GetUnits(
         sc2::Unit::Alliance::Self, [type](const sc2::Unit &unit) {
             return unit.build_progress == 1.0f && unit.unit_type == type;
