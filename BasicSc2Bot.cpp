@@ -16,6 +16,9 @@ using namespace sc2;
  * - Researching upgrades
  */
 void BasicSc2Bot::OnGameStart() {
+    const sc2::Point2D startLoc = Observation()->GetStartLocation();
+    const auto& gameInfo = Observation()->GetGameInfo();
+    enemyLoc = sc2::Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
     buildOrder.push({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
     buildOrder.push({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
@@ -46,7 +49,49 @@ void BasicSc2Bot::OnGameStart() {
  * executing the current build order. It ensures that the bot continuously
  * progresses through its planned strategy by calling ExecuteBuildOrder().
  */
-void BasicSc2Bot::OnStep() { ExecuteBuildOrder(); }
+void BasicSc2Bot::OnStep() { 
+    ExecuteBuildOrder();
+    StartAttack(enemyLoc);
+}
+
+bool IsAttackUnit(const sc2::Unit& unit) {
+    switch (unit.unit_type.ToType()) {
+        case sc2::UNIT_TYPEID::ZERG_ZERGLING:
+            return true;
+        case sc2::UNIT_TYPEID::ZERG_ROACH:
+            return true;
+        case sc2::UNIT_TYPEID::ZERG_RAVAGER:
+            return true;
+        case sc2::UNIT_TYPEID::ZERG_QUEEN:
+            return true;
+        default:
+            return false;
+    }
+};
+
+void BasicSc2Bot::OnUnitDestroyed(const sc2::Unit* unit) {
+    switch (unit->unit_type.ToType()) {
+        case sc2::UNIT_TYPEID::ZERG_ZERGLING:
+            buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        case sc2::UNIT_TYPEID::ZERG_ROACH:
+            buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+        case sc2::UNIT_TYPEID::ZERG_RAVAGER:
+            buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+        case sc2::UNIT_TYPEID::ZERG_QUEEN:
+            buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+        default:
+            return;
+    }
+}
+
+void BasicSc2Bot::StartAttack(const sc2::Point2D& loc) {
+    if (buildOrder.empty()) {
+        const auto attack_units = Observation()->GetUnits(sc2::Unit::Alliance::Self, IsAttackUnit);
+        for (const auto& unit : attack_units) {
+            Actions()->UnitCommand(unit,sc2::ABILITY_ID::ATTACK_ATTACK, loc);
+        }
+    }
+}
 
 /**
  * @brief Handles unit creation events.
@@ -64,6 +109,9 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     }
     default:
         break;
+    }
+    if (IsAttackUnit(*unit) && buildOrder.empty()) {
+        StartAttack(enemyLoc);
     }
 }
 
