@@ -14,10 +14,13 @@ class BasicSc2Bot : public sc2::Agent {
     virtual void OnGameStart() override;
     virtual void OnStep() override;
     virtual void OnUnitCreated(const sc2::Unit *unit) override;
+    virtual void OnUnitDestroyed(const sc2::Unit* unit) override;
 
   private:
     std::queue<std::pair<int, std::function<bool()>>> buildOrder;
+    sc2::Point2D enemyLoc;
     void ExecuteBuildOrder();
+    void StartAttack(const sc2::Point2D& loc);
     bool BuildDrone();
     bool BuildOverlord();
     bool BuildZergling();
