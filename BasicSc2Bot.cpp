@@ -16,27 +16,24 @@ using namespace sc2;
  * - Researching upgrades
  */
 void BasicSc2Bot::OnGameStart() {
-    const sc2::Point2D startLoc = Observation()->GetStartLocation();
-    const auto& gameInfo = Observation()->GetGameInfo();
-    enemyLoc = sc2::Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
+    const Point2D startLoc = Observation()->GetStartLocation();
+    const auto &gameInfo = Observation()->GetGameInfo();
+    enemyLoc = Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
     buildOrder.push({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
     buildOrder.push({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
     buildOrder.push({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
     buildOrder.push({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
-    for (int i = 0; i < 6; ++i) {
+    for(int i = 0; i < 6; ++i) {
         buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
     buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
     buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
-    buildOrder.push(
-        {21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
+    buildOrder.push({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
     buildOrder.push({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    for (int i = 0; i < 4; ++i) {
-        buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
-    }
+    for(int i = 0; i < 4; ++i) { buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)}); }
     buildOrder.push({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    for (int i = 0; i < 10; ++i) {
+    for(int i = 0; i < 10; ++i) {
         buildOrder.push({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
     buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
@@ -49,46 +46,38 @@ void BasicSc2Bot::OnGameStart() {
  * executing the current build order. It ensures that the bot continuously
  * progresses through its planned strategy by calling ExecuteBuildOrder().
  */
-void BasicSc2Bot::OnStep() { 
+void BasicSc2Bot::OnStep() {
     ExecuteBuildOrder();
     StartAttack(enemyLoc);
 }
 
-bool IsAttackUnit(const sc2::Unit& unit) {
-    switch (unit.unit_type.ToType()) {
-        case sc2::UNIT_TYPEID::ZERG_ZERGLING:
-            return true;
-        case sc2::UNIT_TYPEID::ZERG_ROACH:
-            return true;
-        case sc2::UNIT_TYPEID::ZERG_RAVAGER:
-            return true;
-        case sc2::UNIT_TYPEID::ZERG_QUEEN:
-            return true;
-        default:
-            return false;
+bool IsAttackUnit(const Unit &unit) {
+    switch(unit.unit_type.ToType()) {
+    case UNIT_TYPEID::ZERG_ZERGLING: return true;
+    case UNIT_TYPEID::ZERG_ROACH: return true;
+    case UNIT_TYPEID::ZERG_RAVAGER: return true;
+    case UNIT_TYPEID::ZERG_QUEEN: return true;
+    default: return false;
     }
 };
 
-void BasicSc2Bot::OnUnitDestroyed(const sc2::Unit* unit) {
-    switch (unit->unit_type.ToType()) {
-        case sc2::UNIT_TYPEID::ZERG_ZERGLING:
-            buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
-        case sc2::UNIT_TYPEID::ZERG_ROACH:
-            buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
-        case sc2::UNIT_TYPEID::ZERG_RAVAGER:
-            buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
-        case sc2::UNIT_TYPEID::ZERG_QUEEN:
-            buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
-        default:
-            return;
+void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
+    switch(unit->unit_type.ToType()) {
+    case UNIT_TYPEID::ZERG_ZERGLING:
+        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
+    case UNIT_TYPEID::ZERG_ROACH: buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+    case UNIT_TYPEID::ZERG_RAVAGER:
+        buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+    case UNIT_TYPEID::ZERG_QUEEN: buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+    default: return;
     }
 }
 
-void BasicSc2Bot::StartAttack(const sc2::Point2D& loc) {
-    if (buildOrder.empty()) {
-        const auto attack_units = Observation()->GetUnits(sc2::Unit::Alliance::Self, IsAttackUnit);
-        for (const auto& unit : attack_units) {
-            Actions()->UnitCommand(unit,sc2::ABILITY_ID::ATTACK_ATTACK, loc);
+void BasicSc2Bot::StartAttack(const Point2D &loc) {
+    if(buildOrder.empty()) {
+        const auto attack_units = Observation()->GetUnits(Unit::Alliance::Self, IsAttackUnit);
+        for(const auto &unit : attack_units) {
+            Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, loc);
         }
     }
 }
@@ -102,17 +91,14 @@ void BasicSc2Bot::StartAttack(const sc2::Point2D& loc) {
  * @param unit Pointer to the newly created unit.
  */
 void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
-    switch (unit->unit_type.ToType()) {
+    switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_EXTRACTOR: {
         AssignWorkersToExtractor(unit);
         break;
     }
-    default:
-        break;
+    default: break;
     }
-    if (IsAttackUnit(*unit) && buildOrder.empty()) {
-        StartAttack(enemyLoc);
-    }
+    if(IsAttackUnit(*unit) && buildOrder.empty()) { StartAttack(enemyLoc); }
 }
 
 /**
@@ -131,12 +117,9 @@ void BasicSc2Bot::ExecuteBuildOrder() {
     const ObservationInterface *observation = Observation();
     int currentSupply = observation->GetFoodUsed();
 
-    if (!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
-        if (buildOrder.front().second()) {
-            buildOrder.pop();
-        }
-    } else if (!buildOrder.empty() &&
-               currentSupply < buildOrder.front().first) {
+    if(!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
+        if(buildOrder.front().second()) { buildOrder.pop(); }
+    } else if(!buildOrder.empty() && currentSupply < buildOrder.front().first) {
         BuildDrone();
     }
 }
@@ -153,8 +136,8 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 bool BasicSc2Bot::BuildDrone() {
     const ObservationInterface *observation = Observation();
     Units larva = GetIdleLarva();
-    if (!larva.empty() && observation->GetMinerals() >= 50 &&
-        observation->GetFoodUsed() < observation->GetFoodCap()) {
+    if(!larva.empty() && observation->GetMinerals() >= 50
+       && observation->GetFoodUsed() < observation->GetFoodCap()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_DRONE);
         return true;
     }
@@ -176,7 +159,7 @@ bool BasicSc2Bot::BuildOverlord() {
 
     const ObservationInterface *observation = Observation();
     Units larva = GetIdleLarva();
-    if (!larva.empty() && observation->GetMinerals() >= 100) {
+    if(!larva.empty() && observation->GetMinerals() >= 100) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_OVERLORD);
         built = true;
     }
@@ -198,11 +181,9 @@ bool BasicSc2Bot::BuildZergling() {
 
     const ObservationInterface *observation = Observation();
     Units larva = GetIdleLarva();
-    Units spawning_pool =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-    if (!larva.empty() && observation->GetMinerals() >= 25 &&
-        observation->GetFoodUsed() < observation->GetFoodCap() &&
-        !spawning_pool.empty()) {
+    Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    if(!larva.empty() && observation->GetMinerals() >= 25
+       && observation->GetFoodUsed() < observation->GetFoodCap() && !spawning_pool.empty()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ZERGLING);
         built = true;
     }
@@ -223,14 +204,10 @@ bool BasicSc2Bot::BuildQueen() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units hatchery = GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_HATCHERY);
-    ;
-    Units spawning_pool =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-    ;
-    if (!hatchery.empty() && !spawning_pool.empty() &&
-        observation->GetMinerals() >= 150 &&
-        observation->GetFoodUsed() + 1 < observation->GetFoodCap()) {
+    Units hatchery = GetConstructedBuildings(UNIT_TYPEID::ZERG_HATCHERY);
+    Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    if(!hatchery.empty() && !spawning_pool.empty() && observation->GetMinerals() >= 150
+       && observation->GetFoodUsed() + 1 < observation->GetFoodCap()) {
         Actions()->UnitCommand(hatchery[0], ABILITY_ID::TRAIN_QUEEN);
         built = true;
     }
@@ -252,13 +229,9 @@ bool BasicSc2Bot::BuildRoach() {
 
     const ObservationInterface *observation = Observation();
     Units larva = GetIdleLarva();
-    Units roach_warren =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
-    ;
-    if (!larva.empty() && observation->GetMinerals() >= 75 &&
-        observation->GetVespene() >= 25 &&
-        observation->GetFoodUsed() < observation->GetFoodCap() &&
-        !roach_warren.empty()) {
+    Units roach_warren = GetConstructedBuildings(UNIT_TYPEID::ZERG_ROACHWARREN);
+    if(!larva.empty() && observation->GetMinerals() >= 75 && observation->GetVespene() >= 25
+       && observation->GetFoodUsed() < observation->GetFoodCap() && !roach_warren.empty()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ROACH);
         built = true;
     }
@@ -279,15 +252,10 @@ bool BasicSc2Bot::BuildRavager() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units roaches = observation->GetUnits(Unit::Alliance::Self,
-                                          IsUnit(UNIT_TYPEID::ZERG_ROACH));
-    Units roach_warren =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_ROACHWARREN);
-    ;
-    if (!roaches.empty() && observation->GetMinerals() >= 25 &&
-        observation->GetVespene() >= 75 &&
-        observation->GetFoodUsed() < observation->GetFoodCap() &&
-        !roach_warren.empty()) {
+    Units roaches = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_ROACH));
+    Units roach_warren = GetConstructedBuildings(UNIT_TYPEID::ZERG_ROACHWARREN);
+    if(!roaches.empty() && observation->GetMinerals() >= 25 && observation->GetVespene() >= 75
+       && observation->GetFoodUsed() < observation->GetFoodCap() && !roach_warren.empty()) {
         Actions()->UnitCommand(roaches[0], ABILITY_ID::MORPH_RAVAGER);
         built = true;
     }
@@ -309,17 +277,13 @@ bool BasicSc2Bot::BuildSpawningPool() {
 
     const ObservationInterface *observation = Observation();
     Units drones = GetIdleWorkers();
-    if (!drones.empty() && observation->GetMinerals() >= 200) {
-        Point2D buildLocation =
-            FindPlacementForBuilding(ABILITY_ID::BUILD_SPAWNINGPOOL);
-        if (buildLocation.x != 0 && buildLocation.y != 0) {
-            Units spawning_pool =
-                GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL,
-                                   buildLocation);
+    if(!drones.empty() && observation->GetMinerals() >= 200) {
+        Point2D buildLocation = FindPlacementForBuilding(ABILITY_ID::BUILD_SPAWNINGPOOL);
+        if(buildLocation.x != 0 && buildLocation.y != 0) {
+            Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL, buildLocation);
             built = true;
-            spawning_pool =
-                GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+            spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
         }
     }
     return built;
@@ -340,16 +304,13 @@ bool BasicSc2Bot::BuildExtractor() {
 
     const ObservationInterface *observation = Observation();
     Units drones = GetIdleWorkers();
-    if (!drones.empty() && observation->GetMinerals() >= 25) {
-        Units geysers =
-            observation->GetUnits(Unit::Alliance::Neutral,
-                                  IsUnit(UNIT_TYPEID::NEUTRAL_VESPENEGEYSER));
-        for (const auto &geyser : geysers) {
-            float distance =
-                Distance2D(geyser->pos, observation->GetStartLocation());
-            if (distance < 15) {
-                Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_EXTRACTOR,
-                                       geyser);
+    if(!drones.empty() && observation->GetMinerals() >= 25) {
+        Units geysers = observation->GetUnits(Unit::Alliance::Neutral,
+                                              IsUnit(UNIT_TYPEID::NEUTRAL_VESPENEGEYSER));
+        for(const auto &geyser : geysers) {
+            float distance = Distance2D(geyser->pos, observation->GetStartLocation());
+            if(distance < 15) {
+                Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_EXTRACTOR, geyser);
                 built = true;
                 break;
             }
@@ -370,9 +331,8 @@ bool BasicSc2Bot::BuildExtractor() {
 void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
     Units workers = GetIdleWorkers();
     int assignedWorkers = 0;
-    for (const auto &worker : workers) {
-        if (assignedWorkers >= 3)
-            break;
+    for(const auto &worker : workers) {
+        if(assignedWorkers >= 3) break;
         Actions()->UnitCommand(worker, ABILITY_ID::SMART, extractor);
         assignedWorkers++;
     }
@@ -392,11 +352,10 @@ bool BasicSc2Bot::BuildHatchery() {
 
     const ObservationInterface *observation = Observation();
     Units drones = GetIdleWorkers();
-    if (!drones.empty() && observation->GetMinerals() >= 300) {
+    if(!drones.empty() && observation->GetMinerals() >= 300) {
         Point2D buildLocation = FindExpansionLocation();
-        if (buildLocation.x != 0 && buildLocation.y != 0) {
-            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY,
-                                   buildLocation);
+        if(buildLocation.x != 0 && buildLocation.y != 0) {
+            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY, buildLocation);
             built = true;
         }
     }
@@ -418,12 +377,10 @@ bool BasicSc2Bot::BuildRoachWarren() {
 
     const ObservationInterface *observation = Observation();
     Units drones = GetIdleWorkers();
-    if (!drones.empty() && observation->GetMinerals() >= 150) {
-        Point2D buildLocation =
-            FindPlacementForBuilding(ABILITY_ID::BUILD_ROACHWARREN);
-        if (buildLocation.x != 0 && buildLocation.y != 0) {
-            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_ROACHWARREN,
-                                   buildLocation);
+    if(!drones.empty() && observation->GetMinerals() >= 150) {
+        Point2D buildLocation = FindPlacementForBuilding(ABILITY_ID::BUILD_ROACHWARREN);
+        if(buildLocation.x != 0 && buildLocation.y != 0) {
+            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_ROACHWARREN, buildLocation);
             built = true;
         }
     }
@@ -444,13 +401,10 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units spawning_pool =
-        GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-    ;
-    if (!spawning_pool.empty() && observation->GetMinerals() >= 100 &&
-        observation->GetVespene() >= 100) {
-        Actions()->UnitCommand(spawning_pool[0],
-                               ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
+    Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    if(!spawning_pool.empty() && observation->GetMinerals() >= 100
+       && observation->GetVespene() >= 100) {
+        Actions()->UnitCommand(spawning_pool[0], ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
         built = true;
     }
     return built;
@@ -474,25 +428,23 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
     float closest_distance = std::numeric_limits<float>::max();
     Point2D closest_location;
 
-    for (const auto &unit : mineral_fields) {
-        if (unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD &&
-            unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
+    for(const auto &unit : mineral_fields) {
+        if(unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD
+           && unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
             continue;
         }
 
         float distance = Distance2D(unit->pos, start_location);
-        if (distance < closest_distance && distance > 10.0f) {
-            Units nearby_units =
-                observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
-                    return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY &&
-                           Distance2D(u.pos, unit->pos) < 10.0f;
-                });
+        if(distance < closest_distance && distance > 10.0f) {
+            Units nearby_units = observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
+                return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY
+                       && Distance2D(u.pos, unit->pos) < 10.0f;
+            });
 
-            if (nearby_units.empty()) {
+            if(nearby_units.empty()) {
                 Point2D build_location = unit->pos;
                 build_location.x += 7.0f;
-                if (Query()->Placement(ABILITY_ID::BUILD_HATCHERY,
-                                       build_location)) {
+                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
                     closest_distance = distance;
                     closest_location = build_location;
                 }
@@ -514,21 +466,18 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     const ObservationInterface *observation = Observation();
     Point2D hatchery_location;
 
-    for (const auto &unit : observation->GetUnits(Unit::Alliance::Self)) {
-        if (unit->unit_type == UNIT_TYPEID::ZERG_HATCHERY) {
+    for(const auto &unit : observation->GetUnits(Unit::Alliance::Self)) {
+        if(unit->unit_type == UNIT_TYPEID::ZERG_HATCHERY) {
             hatchery_location = unit->pos;
             break;
         }
     }
 
     float radius = 15.0f;
-    for (float dx = -radius; dx <= radius; dx += 1.0f) {
-        for (float dy = -radius; dy <= radius; dy += 1.0f) {
-            Point2D buildLocation =
-                Point2D(hatchery_location.x + dx, hatchery_location.y + dy);
-            if (Query()->Placement(ability_type, buildLocation)) {
-                return buildLocation;
-            }
+    for(float dx = -radius; dx <= radius; dx += 1.0f) {
+        for(float dy = -radius; dy <= radius; dy += 1.0f) {
+            Point2D buildLocation = Point2D(hatchery_location.x + dx, hatchery_location.y + dy);
+            if(Query()->Placement(ability_type, buildLocation)) { return buildLocation; }
         }
     }
     return Point2D(0, 0);
@@ -544,10 +493,9 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
  */
 Units BasicSc2Bot::GetIdleWorkers() {
     return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
-        return unit.unit_type == UNIT_TYPEID::ZERG_DRONE &&
-               (unit.orders.empty() ||
-                unit.orders[0].ability_id == ABILITY_ID::HARVEST_GATHER ||
-                unit.orders[0].ability_id == ABILITY_ID::HARVEST_RETURN);
+        return unit.unit_type == UNIT_TYPEID::ZERG_DRONE
+               && (unit.orders.empty() || unit.orders[0].ability_id == ABILITY_ID::HARVEST_GATHER
+                   || unit.orders[0].ability_id == ABILITY_ID::HARVEST_RETURN);
     });
 }
 
@@ -570,8 +518,7 @@ Units BasicSc2Bot::GetIdleLarva() {
  * buildings.
  */
 Units BasicSc2Bot::GetConstructedBuildings(UNIT_TYPEID type) {
-    return Observation()->GetUnits(
-        Unit::Alliance::Self, [type](const Unit &unit) {
-            return unit.build_progress == 1.0f && unit.unit_type == type;
-        });
+    return Observation()->GetUnits(Unit::Alliance::Self, [type](const Unit &unit) {
+        return unit.build_progress == 1.0f && unit.unit_type == type;
+    });
 }
