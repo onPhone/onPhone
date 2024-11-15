@@ -1,5 +1,7 @@
 #include "BasicSc2Bot.h"
+#include "cpp-sc2/include/sc2api/sc2_typeenums.h"
 #include <iostream>
+#include <limits>
 #include <sc2api/sc2_typeenums.h>
 #include <sc2api/sc2_unit_filters.h>
 
@@ -19,6 +21,8 @@ void BasicSc2Bot::OnGameStart() {
     const Point2D startLoc = Observation()->GetStartLocation();
     const auto &gameInfo = Observation()->GetGameInfo();
     enemyLoc = Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
+    constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].push_back(
+      Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_HATCHERY))[0]);
     buildOrder.push({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
     buildOrder.push({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
@@ -48,7 +52,7 @@ void BasicSc2Bot::OnGameStart() {
  */
 void BasicSc2Bot::OnStep() {
     ExecuteBuildOrder();
-    StartAttack(enemyLoc);
+    if(!AttackMostDangerous()) { StartAttack(enemyLoc); }
 }
 
 bool IsAttackUnit(const Unit &unit) {
@@ -59,7 +63,15 @@ bool IsAttackUnit(const Unit &unit) {
     case UNIT_TYPEID::ZERG_QUEEN: return true;
     default: return false;
     }
-};
+}
+
+bool CanAttackAir(const Unit &unit) {
+    switch(unit.unit_type.ToType()) {
+    case UNIT_TYPEID::ZERG_QUEEN: return true;
+    case UNIT_TYPEID::ZERG_RAVAGER: return true;
+    default: return false;
+    }
+}
 
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
@@ -76,10 +88,46 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
 void BasicSc2Bot::StartAttack(const Point2D &loc) {
     if(buildOrder.empty()) {
         const auto attack_units = Observation()->GetUnits(Unit::Alliance::Self, IsAttackUnit);
-        for(const auto &unit : attack_units) {
-            Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, loc);
+        Actions()->UnitCommand(attack_units, ABILITY_ID::ATTACK_ATTACK, loc);
+    }
+}
+
+bool BasicSc2Bot::AttackMostDangerous() {
+    const Unit *most_dangerous_all = nullptr;
+    const Unit *most_dangerous_ground = nullptr;
+    if(buildOrder.empty()) {
+        // currently attacks weakest enemy unit
+        const auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
+        float min_hp_all = std::numeric_limits<float>::max();
+        float min_hp_ground = std::numeric_limits<float>::max();
+        for(const auto &unit : enemy_units) {
+            if(unit->health + unit->shield < min_hp_all) {
+                min_hp_all = unit->health + unit->shield;
+                most_dangerous_all = unit;
+            }
+            if(!unit->is_flying && unit->health + unit->shield > min_hp_ground) {
+                min_hp_ground = unit->health + unit->shield;
+                most_dangerous_ground = unit;
+            }
+        }
+        if(most_dangerous_all) {
+            const auto attack_units_all
+              = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+                    return IsAttackUnit(unit) && CanAttackAir(unit);
+                });
+            Actions()->UnitCommand(attack_units_all, ABILITY_ID::ATTACK_ATTACK,
+                                   most_dangerous_all->pos);
+        }
+        if(most_dangerous_ground) {
+            const auto attack_units_ground
+              = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+                    return IsAttackUnit(unit) && !CanAttackAir(unit);
+                });
+            Actions()->UnitCommand(attack_units_ground, ABILITY_ID::ATTACK_ATTACK,
+                                   most_dangerous_ground->pos);
         }
     }
+    return most_dangerous_all || most_dangerous_ground;
 }
 
 /**
@@ -98,7 +146,10 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     }
     default: break;
     }
-    if(IsAttackUnit(*unit) && buildOrder.empty()) { StartAttack(enemyLoc); }
+}
+
+void BasicSc2Bot::OnBuildingConstructionComplete(const Unit *unit) {
+    constructedBuildings[GetBuildingIndex(unit->unit_type)].push_back(unit);
 }
 
 /**
@@ -181,7 +232,7 @@ bool BasicSc2Bot::BuildZergling() {
 
     const ObservationInterface *observation = Observation();
     Units larva = GetIdleLarva();
-    Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    Units spawning_pool = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
     if(!larva.empty() && observation->GetMinerals() >= 25
        && observation->GetFoodUsed() < observation->GetFoodCap() && !spawning_pool.empty()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ZERGLING);
@@ -204,8 +255,8 @@ bool BasicSc2Bot::BuildQueen() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units hatchery = GetConstructedBuildings(UNIT_TYPEID::ZERG_HATCHERY);
-    Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    Units hatchery = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)];
+    Units spawning_pool = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
     if(!hatchery.empty() && !spawning_pool.empty() && observation->GetMinerals() >= 150
        && observation->GetFoodUsed() + 1 < observation->GetFoodCap()) {
         Actions()->UnitCommand(hatchery[0], ABILITY_ID::TRAIN_QUEEN);
@@ -229,7 +280,7 @@ bool BasicSc2Bot::BuildRoach() {
 
     const ObservationInterface *observation = Observation();
     Units larva = GetIdleLarva();
-    Units roach_warren = GetConstructedBuildings(UNIT_TYPEID::ZERG_ROACHWARREN);
+    Units roach_warren = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_ROACHWARREN)];
     if(!larva.empty() && observation->GetMinerals() >= 75 && observation->GetVespene() >= 25
        && observation->GetFoodUsed() < observation->GetFoodCap() && !roach_warren.empty()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ROACH);
@@ -243,7 +294,7 @@ bool BasicSc2Bot::BuildRoach() {
  *
  * This function checks for available roaches, sufficient minerals, and a roach
  * warren, then issues a command to train a Ravager if conditions are met. It
- * uses a  flag to ensure only one Roach is built.
+ * uses a  flag to ensure only one Ravager is built.
  *
  * @return true if a Ravager was successfully queued for production or has been
  * built before, false otherwise.
@@ -253,7 +304,7 @@ bool BasicSc2Bot::BuildRavager() {
 
     const ObservationInterface *observation = Observation();
     Units roaches = observation->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_ROACH));
-    Units roach_warren = GetConstructedBuildings(UNIT_TYPEID::ZERG_ROACHWARREN);
+    Units roach_warren = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_ROACHWARREN)];
     if(!roaches.empty() && observation->GetMinerals() >= 25 && observation->GetVespene() >= 75
        && observation->GetFoodUsed() < observation->GetFoodCap() && !roach_warren.empty()) {
         Actions()->UnitCommand(roaches[0], ABILITY_ID::MORPH_RAVAGER);
@@ -280,10 +331,10 @@ bool BasicSc2Bot::BuildSpawningPool() {
     if(!drones.empty() && observation->GetMinerals() >= 200) {
         Point2D buildLocation = FindPlacementForBuilding(ABILITY_ID::BUILD_SPAWNINGPOOL);
         if(buildLocation.x != 0 && buildLocation.y != 0) {
-            Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+            Units spawning_pool
+              = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL, buildLocation);
             built = true;
-            spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
         }
     }
     return built;
@@ -401,7 +452,7 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
     bool built = false;
 
     const ObservationInterface *observation = Observation();
-    Units spawning_pool = GetConstructedBuildings(UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    Units spawning_pool = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
     if(!spawning_pool.empty() && observation->GetMinerals() >= 100
        && observation->GetVespene() >= 100) {
         Actions()->UnitCommand(spawning_pool[0], ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
@@ -511,14 +562,17 @@ Units BasicSc2Bot::GetIdleLarva() {
 }
 
 /**
- * @brief Retrieves a list of fully constructed buildings of a specific type.
+ * @brief Retrieves the index of the building type in constructedBuildings.
  *
  * @param type The UNIT_TYPEID of the building to search for.
- * @return Units A collection of Unit objects representing the constructed
- * buildings.
+ * @return int The index of the building type in constructedBuildings.
  */
-Units BasicSc2Bot::GetConstructedBuildings(UNIT_TYPEID type) {
-    return Observation()->GetUnits(Unit::Alliance::Self, [type](const Unit &unit) {
-        return unit.build_progress == 1.0f && unit.unit_type == type;
-    });
+int BasicSc2Bot::GetBuildingIndex(UNIT_TYPEID type) {
+    switch(type) {
+    case UNIT_TYPEID::ZERG_HATCHERY: return 0;
+    case UNIT_TYPEID::ZERG_EXTRACTOR: return 1;
+    case UNIT_TYPEID::ZERG_SPAWNINGPOOL: return 2;
+    case UNIT_TYPEID::ZERG_ROACHWARREN: return 3;
+    default: return -1; // Invalid building type
+    }
 }
