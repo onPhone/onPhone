@@ -69,6 +69,12 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     case UNIT_TYPEID::ZERG_RAVAGER:
         buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
     case UNIT_TYPEID::ZERG_QUEEN: buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+    case UNIT_TYPEID::ZERG_EXTRACTOR:
+        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+    case UNIT_TYPEID::ZERG_HATCHERY:
+        buildOrder.push({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+    case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
+        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
     default: return;
     }
 }
