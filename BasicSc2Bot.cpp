@@ -456,6 +456,52 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
 }
 
 /**
+ * @brief Finds a suitable placement for a Hatchery near a mineral field.
+ *
+ * This function searches for a suitable location to place a Hatchery near a
+ * mineral field. It checks if the location is valid for building a Hatchery
+ * and returns the coordinates if a suitable location is found.
+ *
+ * @param mineral_field Pointer to the mineral field unit.
+ * @return Point2D The coordinates where the Hatchery can be placed.
+ *         Returns (0, 0) if no suitable location is found.
+ */
+Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
+    for(float curr_dx = 0; curr_dx <= 10; curr_dx += 1.0f) {
+        for(float curr_dy = 0; curr_dy <= 10; curr_dy += 1.0f) {
+            Point2D build_location(mineral_field->pos.x + curr_dx, mineral_field->pos.y + curr_dy);
+            if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                return build_location;
+            }
+            if(curr_dy > 0) {
+                build_location
+                  = Point2D(mineral_field->pos.x + curr_dx, mineral_field->pos.y - curr_dy);
+                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                    return build_location;
+                }
+            }
+        }
+        if(curr_dx > 0) {
+            for(float curr_dy = 0; curr_dy <= 10; curr_dy += 1.0f) {
+                Point2D build_location(mineral_field->pos.x - curr_dx,
+                                       mineral_field->pos.y + curr_dy);
+                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                    return build_location;
+                }
+                if(curr_dy > 0) {
+                    build_location
+                      = Point2D(mineral_field->pos.x - curr_dx, mineral_field->pos.y - curr_dy);
+                    if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                        return build_location;
+                    }
+                }
+            }
+        }
+    }
+    return Point2D(0, 0);
+}
+
+/**
  * @brief Finds a suitable placement for a building near the main Hatchery.
  *
  * @param ability_type The ABILITY_ID of the building to be placed.
