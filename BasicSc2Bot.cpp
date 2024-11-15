@@ -428,6 +428,11 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
     float closest_distance = std::numeric_limits<float>::max();
     Point2D closest_location;
 
+    // Minimum distance from starting location for new mineral field
+    float min_distance_from_start = 32.0f;
+    // Search radius around new mineral field for existing Hatcheries
+    float existing_hatchery_search_radius = 14.0f;
+
     for(const auto &unit : mineral_fields) {
         if(unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD
            && unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
@@ -435,23 +440,22 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
         }
 
         float distance = Distance2D(unit->pos, start_location);
-        if(distance < closest_distance && distance > 10.0f) {
+
+        if(distance < closest_distance && distance > min_distance_from_start) {
             Units nearby_units = observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
                 return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY
-                       && Distance2D(u.pos, unit->pos) < 10.0f;
+                       && Distance2D(u.pos, unit->pos) < existing_hatchery_search_radius;
             });
 
             if(nearby_units.empty()) {
-                Point2D build_location = unit->pos;
-                build_location.x += 7.0f;
-                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                Point2D build_location = FindHatcheryPlacement(unit);
+                if(build_location.x != 0 && build_location.y != 0) {
                     closest_distance = distance;
                     closest_location = build_location;
                 }
             }
         }
     }
-
     return closest_location;
 }
 
