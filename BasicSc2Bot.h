@@ -15,12 +15,15 @@ class BasicSc2Bot : public sc2::Agent {
     virtual void OnStep() override;
     virtual void OnUnitCreated(const sc2::Unit *unit) override;
     virtual void OnUnitDestroyed(const sc2::Unit *unit) override;
+    virtual void OnBuildingConstructionComplete(const sc2::Unit *unit) override;
 
   private:
+    sc2::Units constructedBuildings[4]{};
     std::queue<std::pair<int, std::function<bool()>>> buildOrder;
     sc2::Point2D enemyLoc;
     void ExecuteBuildOrder();
     void StartAttack(const sc2::Point2D &loc);
+    bool AttackMostDangerous();
     bool BuildDrone();
     bool BuildOverlord();
     bool BuildZergling();
@@ -35,7 +38,7 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Units GetIdleWorkers();
     sc2::Units GetIdleLarva();
     void AssignWorkersToExtractor(const sc2::Unit *extractor);
-    sc2::Units GetConstructedBuildings(sc2::UNIT_TYPEID type);
+    int GetBuildingIndex(sc2::UNIT_TYPEID type);
     sc2::Point2D FindExpansionLocation();
     sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
