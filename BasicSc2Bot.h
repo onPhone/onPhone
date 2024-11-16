@@ -40,6 +40,7 @@ class BasicSc2Bot : public sc2::Agent {
     void AssignWorkersToExtractor(const sc2::Unit *extractor);
     int GetBuildingIndex(sc2::UNIT_TYPEID type);
     sc2::Point2D FindExpansionLocation();
+    sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
 };
 

@@ -479,6 +479,11 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
     float closest_distance = std::numeric_limits<float>::max();
     Point2D closest_location;
 
+    // Minimum distance from starting location for new mineral field
+    float min_distance_from_start = 32.0f;
+    // Search radius around new mineral field for existing Hatcheries
+    float existing_hatchery_search_radius = 14.0f;
+
     for(const auto &unit : mineral_fields) {
         if(unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD
            && unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
@@ -486,24 +491,69 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
         }
 
         float distance = Distance2D(unit->pos, start_location);
-        if(distance < closest_distance && distance > 10.0f) {
+
+        if(distance < closest_distance && distance > min_distance_from_start) {
             Units nearby_units = observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
                 return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY
-                       && Distance2D(u.pos, unit->pos) < 10.0f;
+                       && Distance2D(u.pos, unit->pos) < existing_hatchery_search_radius;
             });
 
             if(nearby_units.empty()) {
-                Point2D build_location = unit->pos;
-                build_location.x += 7.0f;
-                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                Point2D build_location = FindHatcheryPlacement(unit);
+                if(build_location.x != 0 && build_location.y != 0) {
                     closest_distance = distance;
                     closest_location = build_location;
                 }
             }
         }
     }
-
     return closest_location;
+}
+
+/**
+ * @brief Finds a suitable placement for a Hatchery near a mineral field.
+ *
+ * This function searches for a suitable location to place a Hatchery near a
+ * mineral field. It checks if the location is valid for building a Hatchery
+ * and returns the coordinates if a suitable location is found.
+ *
+ * @param mineral_field Pointer to the mineral field unit.
+ * @return Point2D The coordinates where the Hatchery can be placed.
+ *         Returns (0, 0) if no suitable location is found.
+ */
+Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
+    for(float curr_dx = 0; curr_dx <= 10; curr_dx += 1.0f) {
+        for(float curr_dy = 0; curr_dy <= 10; curr_dy += 1.0f) {
+            Point2D build_location(mineral_field->pos.x + curr_dx, mineral_field->pos.y + curr_dy);
+            if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                return build_location;
+            }
+            if(curr_dy > 0) {
+                build_location
+                  = Point2D(mineral_field->pos.x + curr_dx, mineral_field->pos.y - curr_dy);
+                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                    return build_location;
+                }
+            }
+        }
+        if(curr_dx > 0) {
+            for(float curr_dy = 0; curr_dy <= 10; curr_dy += 1.0f) {
+                Point2D build_location(mineral_field->pos.x - curr_dx,
+                                       mineral_field->pos.y + curr_dy);
+                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                    return build_location;
+                }
+                if(curr_dy > 0) {
+                    build_location
+                      = Point2D(mineral_field->pos.x - curr_dx, mineral_field->pos.y - curr_dy);
+                    if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
+                        return build_location;
+                    }
+                }
+            }
+        }
+    }
+    return Point2D(0, 0);
 }
 
 /**
