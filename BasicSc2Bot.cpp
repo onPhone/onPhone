@@ -21,20 +21,24 @@ void BasicSc2Bot::OnGameStart() {
     const Point2D startLoc = Observation()->GetStartLocation();
     const auto &gameInfo = Observation()->GetGameInfo();
     enemyLoc = Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
+    rallyPoint = Point2D((3 * enemyLoc.x + startLoc.x) / 4, (3 * enemyLoc.y + startLoc.y) / 4);
+
     constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].push_back(
       Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_HATCHERY))[0]);
+
+    // initial build order
     buildOrder.push({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
     buildOrder.push({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
     buildOrder.push({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+    buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
     buildOrder.push({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
     for(int i = 0; i < 6; ++i) {
         buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
     buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
-    buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
     buildOrder.push({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
     buildOrder.push({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
+    buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
     for(int i = 0; i < 4; ++i) { buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)}); }
     buildOrder.push({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     for(int i = 0; i < 10; ++i) {
@@ -55,16 +59,33 @@ void BasicSc2Bot::OnStep() {
     if(!AttackMostDangerous()) { StartAttack(enemyLoc); }
 }
 
+/**
+ * @brief Determines if a unit is a combat unit capable of attacking.
+ *
+ * This function checks if the given unit is one of the Zerg combat units
+ * (Zergling, Roach, or Ravager) that can engage in combat.
+ *
+ * @param unit The unit to check
+ * @return true if the unit is an attack unit, false otherwise
+ */
 bool IsAttackUnit(const Unit &unit) {
     switch(unit.unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING: return true;
     case UNIT_TYPEID::ZERG_ROACH: return true;
     case UNIT_TYPEID::ZERG_RAVAGER: return true;
-    case UNIT_TYPEID::ZERG_QUEEN: return true;
     default: return false;
     }
 }
 
+/**
+ * @brief Determines if a unit can attack air units.
+ *
+ * This function checks if the given unit is one of the Zerg units
+ * (Queen or Ravager) that can attack air units.
+ *
+ * @param unit The unit to check
+ * @return true if the unit can attack air units, false otherwise
+ */
 bool CanAttackAir(const Unit &unit) {
     switch(unit.unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_QUEEN: return true;
@@ -73,6 +94,15 @@ bool CanAttackAir(const Unit &unit) {
     }
 }
 
+/**
+ * @brief Handles unit destruction events.
+ *
+ * This function is called whenever a unit is destroyed. It checks the type
+ * of the destroyed unit and adds appropriate build orders to replace the lost unit.
+ * Each unit type has a specific supply cost and build function associated with it.
+ *
+ * @param unit Pointer to the destroyed unit
+ */
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING:
@@ -85,6 +115,14 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     }
 }
 
+/**
+ * @brief Initiates an attack command for all attack units.
+ *
+ * This function commands all available attack units to move to and attack
+ * the specified location, but only if there are no pending build orders.
+ *
+ * @param loc The target location for the attack
+ */
 void BasicSc2Bot::StartAttack(const Point2D &loc) {
     if(buildOrder.empty()) {
         const auto attack_units = Observation()->GetUnits(Unit::Alliance::Self, IsAttackUnit);
@@ -92,6 +130,17 @@ void BasicSc2Bot::StartAttack(const Point2D &loc) {
     }
 }
 
+/**
+ * @brief Initiates an attack on the most dangerous enemy unit.
+ *
+ * This function identifies and attacks the most dangerous enemy units based on their health and
+ * shield. It separates units into two categories: those that can attack air units and those that
+ * can only attack ground. Air-capable units will target the enemy unit with the lowest
+ * health+shield, while ground units target the ground enemy with the highest health+shield. The
+ * attack is only initiated if there are no pending build orders.
+ *
+ * @return true if at least one enemy unit was targeted for attack, false otherwise
+ */
 bool BasicSc2Bot::AttackMostDangerous() {
     const Unit *most_dangerous_all = nullptr;
     const Unit *most_dangerous_ground = nullptr;
@@ -140,16 +189,29 @@ bool BasicSc2Bot::AttackMostDangerous() {
  */
 void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
-    case UNIT_TYPEID::ZERG_EXTRACTOR: {
-        AssignWorkersToExtractor(unit);
+    case UNIT_TYPEID::ZERG_ZERGLING:
+    case UNIT_TYPEID::ZERG_ROACH:
+    case UNIT_TYPEID::ZERG_RAVAGER: {
+        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, rallyPoint);
         break;
     }
     default: break;
     }
 }
 
+/**
+ * @brief Handles building construction completion events.
+ *
+ * This function is called whenever a building finishes construction. It adds the
+ * completed building to the appropriate tracking container and performs specific
+ * actions based on the building type. For extractors, it automatically assigns
+ * workers to harvest from them.
+ *
+ * @param unit Pointer to the newly constructed building.
+ */
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit *unit) {
     constructedBuildings[GetBuildingIndex(unit->unit_type)].push_back(unit);
+    if(unit->unit_type == UNIT_TYPEID::ZERG_EXTRACTOR) { AssignWorkersToExtractor(unit); }
 }
 
 /**

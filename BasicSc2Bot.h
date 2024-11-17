@@ -21,6 +21,8 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Units constructedBuildings[4]{};
     std::queue<std::pair<int, std::function<bool()>>> buildOrder;
     sc2::Point2D enemyLoc;
+    sc2::Point2D rallyPoint;
+
     void ExecuteBuildOrder();
     void StartAttack(const sc2::Point2D &loc);
     bool AttackMostDangerous();
