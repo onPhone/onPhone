@@ -136,7 +136,7 @@ void BasicSc2Bot::StartAttack(const Point2D &loc) {
  * This function identifies and attacks the most dangerous enemy units based on their health and
  * shield. It separates units into two categories: those that can attack air units and those that
  * can only attack ground. Air-capable units will target the enemy unit with the lowest
- * health+shield, while ground units target the ground enemy with the highest health+shield. The
+ * health+shield, while ground units target the ground enemy with the lowest health+shield. The
  * attack is only initiated if there are no pending build orders.
  *
  * @return true if at least one enemy unit was targeted for attack, false otherwise
@@ -154,7 +154,7 @@ bool BasicSc2Bot::AttackMostDangerous() {
                 min_hp_all = unit->health + unit->shield;
                 most_dangerous_all = unit;
             }
-            if(!unit->is_flying && unit->health + unit->shield > min_hp_ground) {
+            if(!unit->is_flying && unit->health + unit->shield < min_hp_ground) {
                 min_hp_ground = unit->health + unit->shield;
                 most_dangerous_ground = unit;
             }
