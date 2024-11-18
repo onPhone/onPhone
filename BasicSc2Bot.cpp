@@ -35,7 +35,9 @@ void BasicSc2Bot::OnGameStart() {
     buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
     buildOrder.push_back({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
     buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    for(int i = 0; i < 4; ++i) { buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoach, this)}); }
+    for(int i = 0; i < 4; ++i) {
+        buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+    }
     buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     for(int i = 0; i < 10; ++i) {
         buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
@@ -77,16 +79,25 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING:
         buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
-    case UNIT_TYPEID::ZERG_ROACH: buildOrder.push_front({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+        break;
+    case UNIT_TYPEID::ZERG_ROACH:
+        buildOrder.push_front({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+        break;
     case UNIT_TYPEID::ZERG_RAVAGER:
         buildOrder.push_front({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
-    case UNIT_TYPEID::ZERG_QUEEN: buildOrder.push_front({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+        break;
+    case UNIT_TYPEID::ZERG_QUEEN:
+        buildOrder.push_front({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+        break;
     case UNIT_TYPEID::ZERG_EXTRACTOR:
         buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+        break;
     case UNIT_TYPEID::ZERG_HATCHERY:
         buildOrder.push_front({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+        break;
     case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
         buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+        break;
     default: return;
     }
 }
