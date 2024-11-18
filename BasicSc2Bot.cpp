@@ -125,6 +125,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
  */
 void BasicSc2Bot::StartAttack(const Point2D &loc) {
     if(buildOrder.empty()) {
+        isAttacking = true;
         const auto attack_units = Observation()->GetUnits(Unit::Alliance::Self, IsAttackUnit);
         Actions()->UnitCommand(attack_units, ABILITY_ID::ATTACK_ATTACK, loc);
     }
@@ -192,7 +193,11 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     case UNIT_TYPEID::ZERG_ZERGLING:
     case UNIT_TYPEID::ZERG_ROACH:
     case UNIT_TYPEID::ZERG_RAVAGER: {
-        Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, rallyPoint);
+        if(isAttacking) {
+            Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, enemyLoc);
+        } else {
+            Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, rallyPoint);
+        }
         break;
     }
     default: break;
