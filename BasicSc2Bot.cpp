@@ -23,24 +23,24 @@ void BasicSc2Bot::OnGameStart() {
     enemyLoc = Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
     constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].push_back(
       Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_HATCHERY))[0]);
-    buildOrder.push({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
-    buildOrder.push({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
-    buildOrder.push({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
-    buildOrder.push({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+    buildOrder.push_back({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
+    buildOrder.push_back({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
+    buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+    buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+    buildOrder.push_back({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
     for(int i = 0; i < 6; ++i) {
-        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
-    buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
-    buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
-    buildOrder.push({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
-    buildOrder.push({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    for(int i = 0; i < 4; ++i) { buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)}); }
-    buildOrder.push({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
+    buildOrder.push_back({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+    buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
+    buildOrder.push_back({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
+    buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
+    for(int i = 0; i < 4; ++i) { buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoach, this)}); }
+    buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     for(int i = 0; i < 10; ++i) {
-        buildOrder.push({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
-    buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+    buildOrder.push_back({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
 }
 
 /**
@@ -76,17 +76,17 @@ bool CanAttackAir(const Unit &unit) {
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING:
-        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
-    case UNIT_TYPEID::ZERG_ROACH: buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+        buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
+    case UNIT_TYPEID::ZERG_ROACH: buildOrder.push_front({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
     case UNIT_TYPEID::ZERG_RAVAGER:
-        buildOrder.push({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
-    case UNIT_TYPEID::ZERG_QUEEN: buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+        buildOrder.push_front({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+    case UNIT_TYPEID::ZERG_QUEEN: buildOrder.push_front({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
     case UNIT_TYPEID::ZERG_EXTRACTOR:
-        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+        buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
     case UNIT_TYPEID::ZERG_HATCHERY:
-        buildOrder.push({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+        buildOrder.push_front({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
     case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
-        buildOrder.push({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+        buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
     default: return;
     }
 }
@@ -175,7 +175,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
     int currentSupply = observation->GetFoodUsed();
 
     if(!buildOrder.empty() && currentSupply >= buildOrder.front().first) {
-        if(buildOrder.front().second()) { buildOrder.pop(); }
+        if(buildOrder.front().second()) { buildOrder.pop_front(); }
     } else if(!buildOrder.empty() && currentSupply < buildOrder.front().first) {
         BuildDrone();
     }
