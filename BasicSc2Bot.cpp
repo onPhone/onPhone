@@ -36,9 +36,9 @@ void BasicSc2Bot::OnGameStart() {
         buildOrder.push({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
     buildOrder.push({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+    buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
     buildOrder.push({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
     buildOrder.push({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
     for(int i = 0; i < 4; ++i) { buildOrder.push({21, std::bind(&BasicSc2Bot::BuildRoach, this)}); }
     buildOrder.push({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     for(int i = 0; i < 10; ++i) {
