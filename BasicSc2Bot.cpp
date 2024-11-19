@@ -23,7 +23,6 @@ void BasicSc2Bot::OnGameStart() {
     enemyLoc = Point2D(gameInfo.width - startLoc.x, gameInfo.height - startLoc.y);
     constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].push_back(
       Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_HATCHERY))[0]);
-    buildOrder.push_back({12, std::bind(&BasicSc2Bot::BuildDrone, this)});
     buildOrder.push_back({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
     buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
