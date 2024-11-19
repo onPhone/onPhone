@@ -19,7 +19,7 @@ class BasicSc2Bot : public sc2::Agent {
 
   private:
     sc2::Units constructedBuildings[4]{};
-    std::queue<std::pair<int, std::function<bool()>>> buildOrder;
+    std::deque<std::pair<int, std::function<bool()>>> buildOrder;
     sc2::Point2D enemyLoc;
     sc2::Point2D rallyPoint;
     bool isAttacking = false;
