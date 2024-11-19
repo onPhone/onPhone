@@ -116,6 +116,7 @@ struct PriorityCompare {
 };
 
 typedef std::pair<int,std::pair<sc2::UNIT_TYPEID,UnitGroup*>> build_priority_item;
+typedef std::pair<int,std::pair<sc2::ABILITY_ID,sc2::UNIT_TYPEID>> research_priority_item;
 
 class BasicSc2Bot : public sc2::Agent {
   public:
@@ -123,22 +124,31 @@ class BasicSc2Bot : public sc2::Agent {
     virtual void OnGameStart() override;
     virtual void OnStep() override;
     virtual void OnUnitCreated(const sc2::Unit *unit) override;
+    void addBuild(int priority, const sc2::UNIT_TYPEID& type, UnitGroup*& group);
+    void addBuild(int priority, const sc2::ABILITY_ID& research_ability, const sc2::UNIT_TYPEID& group);
+    bool ResearchUpgrade(sc2::ABILITY_ID research_ability, sc2::UNIT_TYPEID required_structure);
+    void tryInjection();
+    std::vector<sc2::Point3D> GetEnemyUnitLocations();
 
     MasterController controller;
     UnitGroup* Intermediates;
     UnitGroup* Buildings;
     UnitGroup* Scouts;
+    UnitGroup* Larva;
     std::priority_queue<build_priority_item,
       std::vector<build_priority_item>,
       PriorityCompare> build_priorities;
+    std::priority_queue<research_priority_item,
+      std::vector<research_priority_item>,
+      PriorityCompare> research_priorities;
     std::map<sc2::UNIT_TYPEID, 
       std::priority_queue<std::pair<int,UnitGroup*>,
       std::vector<std::pair<int,UnitGroup*>>,
       PriorityCompare>> assignment_priorities;
-    sc2::Point2D enemyLoc;
+    sc2::Point2D enemyLoc; 
     std::vector<sc2::Point3D> baseLocations;
     std::vector<sc2::Point2D> waypoints;
-    std::vector<sc2::Point3D> enemyBases;
+    std::map<sc2::UNIT_TYPEID, int> buildOrders;
   private:
     void ExecuteBuildOrder();
     void initializeWaypoints();
@@ -161,10 +171,9 @@ class BasicSc2Bot : public sc2::Agent {
     bool BuildRoach();
     bool BuildRavager();
     sc2::Units GetIdleWorkers();
-    sc2::Units GetIdleLarva();
     void AssignWorkersToExtractor(const sc2::Unit *extractor);
     sc2::Units GetConstructedBuildings(sc2::UNIT_TYPEID type);
-    sc2::Point2D FindExpansionLocation();
+    sc2::Point2D FindExpansionLocation(const sc2::Unit* &unit);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
 };
 

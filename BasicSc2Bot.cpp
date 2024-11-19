@@ -9,7 +9,7 @@
 using namespace sc2;
 
 #define EPSILON 0.000001
-#define BASE_SIZE 30
+#define BASE_SIZE 15.0f
 
 bool AllyUnit::isMoving() const {
     if (this->unit == nullptr) {
@@ -83,7 +83,7 @@ void ScoutController::scout_all(AllyUnit& unit) {
 };
 
 void ScoutController::underAttack(AllyUnit& unit) {
-
+    bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]);
 };
 
 void ScoutController::onDeath(AllyUnit& unit) {
@@ -107,7 +107,6 @@ void WorkerController::step(AllyUnit& unit) {
 };
 
 void WorkerController::extract(AllyUnit& unit) {
-    std::cout << "SHOULD EXTRACT\n";
     bool is_extracting = false;
     for (const auto& order : unit.unit->orders) {
         if (order.ability_id == sc2::ABILITY_ID::HARVEST_GATHER) {
@@ -219,6 +218,35 @@ void AttackController::onDeath(AllyUnit& unit) {
 
 };
 
+#define ENEMY_EPSILON 1.0f
+
+std::vector<sc2::Point3D> BasicSc2Bot::GetEnemyUnitLocations() {
+    const ObservationInterface* observation = Observation();
+    std::vector<sc2::Point3D> enemy_unit_locations;
+
+    // Get all enemy units that are either visible or in snapshot
+    Units enemy_units = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit& unit) {
+        return unit.unit_type.ToType() != sc2::UNIT_TYPEID::INVALID &&  // Valid unit
+               (unit.display_type == sc2::Unit::DisplayType::Visible || // Visible or
+                unit.display_type == sc2::Unit::DisplayType::Snapshot); // Snapshot
+    });
+
+    // Add the positions of these units to the list
+    for (const auto& enemy_unit : enemy_units) {
+        enemy_unit_locations.push_back(enemy_unit->pos);
+
+        // Log unit type and location for debugging
+        std::cout << "Enemy " << static_cast<int>(enemy_unit->unit_type.ToType()) 
+                  << " at (" << enemy_unit->pos.x 
+                  << ", " << enemy_unit->pos.y 
+                  << ", " << enemy_unit->pos.z << ").\n";
+    }
+
+    return enemy_unit_locations;
+}
+
+
+
 MasterController::MasterController(BasicSc2Bot* bot) : worker_controller(bot), scout_controller(bot), attack_controller(bot) {};
 
 void MasterController::addUnitGroup(UnitGroup unit) {
@@ -298,6 +326,68 @@ void BasicSc2Bot::initializeWaypoints() {
     }
 };
 
+void BasicSc2Bot::addBuild(int priority, const sc2::UNIT_TYPEID& type, UnitGroup*& group) {
+    if (group == this->Buildings || type == sc2::UNIT_TYPEID::ZERG_RAVAGER) {
+        ++buildOrders[type];
+        std::cout<< "ADDED: " << priority << " " << buildOrders[type] << "\n";
+    }
+    build_priorities.push({priority, {type, group}});
+}
+
+void BasicSc2Bot::addBuild(int priority, const sc2::ABILITY_ID& research_ability, const sc2::UNIT_TYPEID& building) {
+    research_priorities.push({priority, {research_ability, building}});
+}
+
+void BasicSc2Bot::tryInjection() {
+    const ObservationInterface* observation = Observation();
+
+    Units queens = observation->GetUnits(Unit::Alliance::Self, [](const sc2::Unit& unit) {
+        return unit.unit_type == sc2::UNIT_TYPEID::ZERG_QUEEN && unit.energy >= 25;
+    });
+
+    if (queens.empty()) {
+        return;
+    }
+
+    Units hatcheries = observation->GetUnits(Unit::Alliance::Self, [](const sc2::Unit& unit) {
+        return unit.unit_type == sc2::UNIT_TYPEID::ZERG_HATCHERY || 
+               unit.unit_type == sc2::UNIT_TYPEID::ZERG_LAIR;
+    });
+
+    if (hatcheries.empty()) {
+        return;
+    }
+
+    for (const auto& hatchery : hatcheries) {
+        bool already_injected = false;
+        for (const auto& order : hatchery->orders) {
+            if (order.ability_id == sc2::ABILITY_ID::EFFECT_INJECTLARVA) {
+                already_injected = true;
+                break;
+            }
+        }
+
+        if (!already_injected) {
+            // Find the closest Queen to this Hatchery
+            const sc2::Unit* closest_queen = nullptr;
+            float closest_distance = std::numeric_limits<float>::max();
+
+            for (const auto& queen : queens) {
+                float distance = Distance2D(queen->pos, hatchery->pos);
+                if (distance < closest_distance) {
+                    closest_distance = distance;
+                    closest_queen = queen;
+                }
+            }
+
+            if (closest_queen) {
+                Actions()->UnitCommand(closest_queen, sc2::ABILITY_ID::EFFECT_INJECTLARVA, hatchery);
+            }
+        }
+    }
+}
+
+
 /**
  * @brief Initializes the build order for the Zerg bot.
  *
@@ -335,6 +425,13 @@ void BasicSc2Bot::OnGameStart() {
         InitialMiners->addUnit(AllyUnit(unit, InitialMiners->unitTask, InitialMiners));
     }
 
+    auto larva = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_LARVA;
+    });
+    for (const Unit* &unit : larva) {
+        InitialMiners->addUnit(AllyUnit(unit, this->Intermediates->unitTask, this->Intermediates));
+    }
+
     auto overlords = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
         return unit.unit_type == UNIT_TYPEID::ZERG_OVERLORD;
     });
@@ -346,30 +443,32 @@ void BasicSc2Bot::OnGameStart() {
         return unit.unit_type == UNIT_TYPEID::ZERG_HATCHERY;
     });
     for (const Unit* &unit : buildings) {
-        InitialMiners->addUnit(AllyUnit(unit, this->Buildings->unitTask, this->Buildings));
+        this->Buildings->addUnit(AllyUnit(unit, this->Buildings->unitTask, this->Buildings));
     }
 
     for (int i = 0; i < 4; ++i) {
-        build_priorities.push({100, {sc2::UNIT_TYPEID::ZERG_DRONE, InitialMiners}});
+        addBuild(100, sc2::UNIT_TYPEID::ZERG_DRONE, InitialMiners);
     }
-    build_priorities.push({97, {sc2::UNIT_TYPEID::ZERG_EXTRACTOR, this->Buildings}});
-    for (int i = 0; i < 3; ++i) {
-        build_priorities.push({96, {sc2::UNIT_TYPEID::ZERG_DRONE, InitialExtractors}});
+    addBuild(97, sc2::UNIT_TYPEID::ZERG_EXTRACTOR, this->Buildings);
+    for (int i = 0; i < 5; ++i) {
+        addBuild(96, sc2::UNIT_TYPEID::ZERG_DRONE, InitialExtractors);
     }
-    build_priorities.push({95, {sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL, this->Buildings}});
-    build_priorities.push({94, {sc2::UNIT_TYPEID::ZERG_HATCHERY, this->Buildings}});
-    build_priorities.push({93, {sc2::UNIT_TYPEID::ZERG_QUEEN, InitialAttack}});
+    addBuild(95, sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL, this->Buildings);
+    addBuild(94, sc2::UNIT_TYPEID::ZERG_HATCHERY, this->Buildings);
+    addBuild(93, sc2::UNIT_TYPEID::ZERG_QUEEN, InitialAttack);
     for (int i = 0; i < 6; ++i) {
-        build_priorities.push({92, {sc2::UNIT_TYPEID::ZERG_ZERGLING, InitialAttack}});
+        addBuild(92, sc2::UNIT_TYPEID::ZERG_ZERGLING, InitialAttack);
     }
-    build_priorities.push({88, {sc2::UNIT_TYPEID::ZERG_OVERLORD, this->Scouts}});
+    addBuild(89, ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST, sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+    addBuild(88, sc2::UNIT_TYPEID::ZERG_OVERLORD, this->Scouts);
+    addBuild(87, sc2::UNIT_TYPEID::ZERG_ROACHWARREN, this->Buildings);
     for (int i = 0; i < 4; ++i) {
-        build_priorities.push({86, {sc2::UNIT_TYPEID::ZERG_ROACH, InitialAttack}});
+        addBuild(86, sc2::UNIT_TYPEID::ZERG_ROACH, InitialAttack);
     }
     for (int i = 0; i < 10; ++i) {
-        build_priorities.push({85, {sc2::UNIT_TYPEID::ZERG_ZERGLING, InitialAttack}});
+        addBuild(85, sc2::UNIT_TYPEID::ZERG_ZERGLING, InitialAttack);
     }
-    build_priorities.push({84, {sc2::UNIT_TYPEID::ZERG_RAVAGER, InitialAttack}});
+    addBuild(84, sc2::UNIT_TYPEID::ZERG_RAVAGER, InitialAttack);
 }
 
 
@@ -387,7 +486,57 @@ void BasicSc2Bot::OnStep() {
         Debug()->DebugSphereOut(base, 1.5f, sc2::Colors::Green);
     }
     Debug()->SendDebug();
+    GetEnemyUnitLocations();
+};
+
+bool BasicSc2Bot::ResearchUpgrade(sc2::ABILITY_ID research_ability, sc2::UNIT_TYPEID required_structure) {
+    const ObservationInterface* observation = Observation();
+
+    // Find the required structure
+    Units research_structures = Observation()->GetUnits(Unit::Alliance::Self, [required_structure](const sc2::Unit& unit) {
+        return unit.unit_type == required_structure &&
+               unit.build_progress == 1.0f &&  // Fully built
+               unit.orders.empty();           // Not already researching
+    }); 
+
+    if (research_structures.empty()) {
+        return false; // No valid structure available
+    }
+
+    // Locate the specific upgrade data
+    const auto& all_upgrades = observation->GetUpgradeData(); // Get all upgrade data
+    const sc2::UpgradeData* upgrade_data = nullptr;
+
+    for (const auto& upgrade : all_upgrades) {
+        if (upgrade.ability_id == research_ability) {
+            upgrade_data = &upgrade;
+            break;
+        }
+    }
+
+    if (!upgrade_data) {
+        std::cerr << "Invalid research ability ID: " << static_cast<int>(research_ability) << ".\n";
+        return false; // Upgrade not found
+    }
+
+    // Check resources
+    if (observation->GetMinerals() < upgrade_data->mineral_cost ||
+        observation->GetVespene() < upgrade_data->vespene_cost) {
+        std::cerr << "Not enough resources to research ability: " << static_cast<int>(research_ability) << ".\n";
+        return false; // Insufficient resources
+    }
+
+    // Issue the research command
+    const sc2::Unit* structure = research_structures[0];
+    Actions()->UnitCommand(structure, research_ability);
+
+    std::cout << "Researching ability: " << static_cast<int>(research_ability) 
+              << " at structure located at (" << structure->pos.x << ", " << structure->pos.y << ").\n";
+
+    return true;
 }
+
+
 
 bool BasicSc2Bot::BuildUnit(const sc2::UNIT_TYPEID& type) {
     switch (type) {
@@ -409,6 +558,8 @@ bool BasicSc2Bot::BuildUnit(const sc2::UNIT_TYPEID& type) {
             return this->BuildHatchery();
         case sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL:
             return this->BuildSpawningPool();
+        case sc2::UNIT_TYPEID::ZERG_ROACHWARREN:
+            return this->BuildRoachWarren();
         default:
             return false;
     }
@@ -424,12 +575,15 @@ bool BasicSc2Bot::BuildUnit(const sc2::UNIT_TYPEID& type) {
  */
 void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     if (!assignment_priorities[unit->unit_type.ToType()].empty()) {
+        std::cout << "SIZE: " << assignment_priorities[unit->unit_type.ToType()].size() << "\n";
         auto top = assignment_priorities[unit->unit_type.ToType()].top();
         if (unit->unit_type.ToType() == sc2::UNIT_TYPEID::ZERG_DRONE) {
             std::cout << "CREATED: " << (int)top.second->unitTask << "\n";
         }
         (*(top.second)).addUnit(AllyUnit(unit, top.second->unitTask, top.second));
         assignment_priorities[unit->unit_type.ToType()].pop();
+    } else if (unit->unit_type.ToType() == sc2::UNIT_TYPEID::ZERG_LARVA) {
+        this->Intermediates->addUnit(AllyUnit(unit, this->Intermediates->unitTask, this->Intermediates));
     }
 }
 
@@ -460,28 +614,53 @@ bool BasicSc2Bot::HasEnoughSupply(unsigned int requiredSupply) const {
  */
 void BasicSc2Bot::ExecuteBuildOrder() {
     std::vector<std::pair<int, std::pair<sc2::UNIT_TYPEID, UnitGroup*>>> failed_builds;
-    // Process the priority queue
-    while (!this->build_priorities.empty()) {
-        // Get a reference to the top element to avoid unnecessary copying
-        const auto& top = this->build_priorities.top();
-        // Attempt to build the unit
-        if (!this->BuildUnit(top.second.first)) {
-            failed_builds.push_back(std::move(top)); // Add failed item to the list
+    std::vector<std::pair<int, std::pair<sc2::ABILITY_ID, sc2::UNIT_TYPEID>>> failed_researches;
+
+    // Process build and research priorities
+    while (!this->build_priorities.empty() || !this->research_priorities.empty()) {
+        bool process_build = false;
+
+        // Determine whether to process build or research based on priority
+        if (this->research_priorities.empty()) {
+            process_build = true; // Only builds available
+        } else if (this->build_priorities.empty()) {
+            process_build = false; // Only research available
         } else {
-            // Record successful build into assignment priorities
-            assignment_priorities[top.second.first].push({top.first, top.second.second});
+            // Compare priorities of the top items
+            process_build = (this->build_priorities.top().first >= this->research_priorities.top().first);
         }
 
-        // Remove the processed element from the queue
-        this->build_priorities.pop();
+        if (process_build) {
+            // Handle unit building
+            const auto& top = this->build_priorities.top();
+            if (!this->BuildUnit(top.second.first)) {
+                failed_builds.push_back(top);
+            } else {
+                // Record successful build into assignment priorities
+                assignment_priorities[top.second.first].push({top.first, top.second.second});
+            }
+            this->build_priorities.pop();
+        } else {
+            // Handle research
+            const auto& research_top = this->research_priorities.top();
+            if (!this->ResearchUpgrade(research_top.second.first, research_top.second.second)) {
+                failed_researches.push_back(research_top);
+            }
+            this->research_priorities.pop();
+        }
     }
 
-    // Reinsert failed builds into the priority queue
+    // Reinsert failed builds into the build priority queue
     for (const auto& item : failed_builds) {
         this->build_priorities.push(item);
     }
 
+    // Reinsert failed research into the research priority queue
+    for (const auto& item : failed_researches) {
+        this->research_priorities.push(item);
+    }
 }
+
 
 
 /**
@@ -495,23 +674,36 @@ void BasicSc2Bot::ExecuteBuildOrder() {
  */
 bool BasicSc2Bot::BuildDrone() {
     const ObservationInterface *observation = Observation();
-    Units larva = GetIdleLarva();
+    std::vector<const Unit*> larva = GetIntermediates(UNIT_TYPEID::ZERG_LARVA);
+    //std::cout << "RAN START\n";
     if (larva.empty()) {
+        tryInjection();
         return false;
     }
+    //std::cout << larva[0] << "\n";
     if (!this->HasEnoughSupply(1)) {
         auto units = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
             return unit.orders.size() > 0 && unit.orders.front().ability_id == sc2::ABILITY_ID::TRAIN_OVERLORD;
         });
-        if (units.empty()) {
+        if (units.empty() && assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].empty()) {
             if (this->BuildOverlord()) {
                 assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].push({999999,this->Scouts});
             }
         }
         return false;
     }
-    if (!larva.empty() && observation->GetMinerals() >= 50) {
-        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_DRONE);
+    //std::cout << "RAN MID\n";
+    if (observation->GetMinerals() >= 50) {
+        const sc2::Unit* unit = larva[0];
+
+        Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_DRONE);
+
+        auto& intermediates = this->Intermediates->units;
+        intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+            [unit](const AllyUnit& ally_unit) {
+                return ally_unit.unit == unit; // Match and remove the drone
+            }), intermediates.end());
+
         return true;
     }
     return false;
@@ -529,9 +721,22 @@ bool BasicSc2Bot::BuildDrone() {
  */
 bool BasicSc2Bot::BuildOverlord() {
     const ObservationInterface *observation = Observation();
-    Units larva = GetIdleLarva();
-    if (!larva.empty() && observation->GetMinerals() >= 100) {
-        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_OVERLORD);
+    std::vector<const Unit*> larva = GetIntermediates(UNIT_TYPEID::ZERG_LARVA);
+    if (larva.empty()) {
+        tryInjection();
+        return false;
+    }
+    if (observation->GetMinerals() >= 100) {
+        const sc2::Unit* unit = larva[0];
+
+        Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_OVERLORD);
+
+        auto& intermediates = this->Intermediates->units;
+        intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+            [unit](const AllyUnit& ally_unit) {
+                return ally_unit.unit == unit; // Match and remove the drone
+            }), intermediates.end());
+
         return true;
     }
     return false;
@@ -549,14 +754,19 @@ bool BasicSc2Bot::BuildOverlord() {
  */
 bool BasicSc2Bot::BuildZergling() {
     const ObservationInterface *observation = Observation();
-    Units larva = GetIdleLarva();
+    std::vector<const Unit*> larva = GetIntermediates(UNIT_TYPEID::ZERG_LARVA);
     Units spawning_pool = GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
+
+    if (larva.empty()) {
+        tryInjection();
+        return false;
+    }
 
     if (!this->HasEnoughSupply(1)) {
         auto units = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
             return unit.orders.size() > 0 && unit.orders.front().ability_id == sc2::ABILITY_ID::TRAIN_OVERLORD;
         });
-        if (units.empty()) {
+        if (units.empty() && assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].empty()) {
             if (this->BuildOverlord()) {
                 assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].push({999999,this->Scouts});
             }
@@ -564,8 +774,17 @@ bool BasicSc2Bot::BuildZergling() {
         return false;
     }
 
-    if (!larva.empty() && observation->GetMinerals() >= 25 && !spawning_pool.empty()) {
-        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ZERGLING);
+    if (observation->GetMinerals() >= 25 && !spawning_pool.empty()) {
+        const sc2::Unit* unit = larva[0];
+
+        Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_ZERGLING);
+
+        auto& intermediates = this->Intermediates->units;
+        intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+            [unit](const AllyUnit& ally_unit) {
+                return ally_unit.unit == unit; // Match and remove the drone
+            }), intermediates.end());
+
         return true;
     }
     return false;
@@ -586,16 +805,12 @@ bool BasicSc2Bot::BuildQueen() {
     Units hatchery = GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_HATCHERY);
     
     Units spawning_pool = GetConstructedBuildings(sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL);
-    Units larva = GetIdleLarva();
 
-    if (larva.empty()) {
-        return false;
-    }
     if (!this->HasEnoughSupply(2)) {
         auto units = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
             return unit.orders.size() > 0 && unit.orders.front().ability_id == sc2::ABILITY_ID::TRAIN_OVERLORD;
         });
-        if (units.empty()) {
+        if (units.empty() && assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].empty()) {
             if (this->BuildOverlord()) {
                 assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].push({999999,this->Scouts});
             }
@@ -604,7 +819,9 @@ bool BasicSc2Bot::BuildQueen() {
     }
 
     if (!hatchery.empty() && !spawning_pool.empty() && observation->GetMinerals() >= 150) {
-        Actions()->UnitCommand(hatchery[0], ABILITY_ID::TRAIN_QUEEN);
+        const sc2::Unit* unit = hatchery[0];
+        Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_QUEEN);
+
         return true;
     }
     return false;
@@ -622,24 +839,38 @@ bool BasicSc2Bot::BuildQueen() {
  */
 bool BasicSc2Bot::BuildRoach() {
     const ObservationInterface *observation = Observation();
-    Units larva = GetIdleLarva();
-    if (!HasUnitType(sc2::UNIT_TYPEID::ZERG_ROACHWARREN)) {
+    auto larva = GetIntermediates(UNIT_TYPEID::ZERG_LARVA);
 
+    if (larva.empty()) {
+        tryInjection();
+        return false;
+    }
+
+    if (!HasUnitType(sc2::UNIT_TYPEID::ZERG_ROACHWARREN)) {
         return false;
     }
     if (!this->HasEnoughSupply(1)) {
         auto units = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
             return unit.orders.size() > 0 && unit.orders.front().ability_id == sc2::ABILITY_ID::TRAIN_OVERLORD;
         });
-        if (units.empty()) {
+        if (units.empty() && assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].empty()) {
             if (this->BuildOverlord()) {
                 assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].push({999999,this->Scouts});
             }
         }
         return false;
     }
-    if (!larva.empty() && observation->GetMinerals() >= 75 && observation->GetVespene() >= 25) {
-        Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ROACH);
+    if (observation->GetMinerals() >= 75 && observation->GetVespene() >= 25) {
+        const sc2::Unit* unit = larva[0];
+
+        Actions()->UnitCommand(unit, ABILITY_ID::TRAIN_ROACH);
+
+        auto& intermediates = this->Intermediates->units;
+        intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+            [unit](const AllyUnit& ally_unit) {
+                return ally_unit.unit == unit; // Match and remove the drone
+            }), intermediates.end());
+
         return true;
     }
     return false;
@@ -710,7 +941,7 @@ bool BasicSc2Bot::BuildRavager() {
         auto units = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
             return unit.orders.size() > 0 && unit.orders.front().ability_id == sc2::ABILITY_ID::TRAIN_OVERLORD;
         });
-        if (units.empty()) {
+        if (units.empty() && assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].empty()) {
             if (this->BuildOverlord()) {
                 assignment_priorities[sc2::UNIT_TYPEID::ZERG_OVERLORD].push({999999,this->Scouts});
             }
@@ -718,7 +949,17 @@ bool BasicSc2Bot::BuildRavager() {
         return false;
     }
     if (observation->GetMinerals() >= 25 && observation->GetVespene() >= 75) {
-        Actions()->UnitCommand(roaches[0], ABILITY_ID::MORPH_RAVAGER);
+
+        const sc2::Unit* unit = roaches[0];
+
+        Actions()->UnitCommand(unit, ABILITY_ID::MORPH_RAVAGER);
+
+        auto& intermediates = this->Intermediates->units;
+        intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+            [unit](const AllyUnit& ally_unit) {
+                return ally_unit.unit == unit; // Match and remove the drone
+            }), intermediates.end());
+
         return true;
     }
     return false;
@@ -738,21 +979,33 @@ bool BasicSc2Bot::BuildSpawningPool() {
     const ObservationInterface *observation = Observation();
     std::vector<const Unit*> drones = GetIntermediates(UNIT_TYPEID::ZERG_DRONE);
     if (drones.empty()) {
-        if ((assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].empty() ||
-            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].top().second != this->Intermediates) && BuildDrone()) {
-                assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
+        if (buildOrders[sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL] > 0 && BuildDrone()) {
+            --buildOrders[sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL];
+            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
         }
         return false;
     }
+    std::cout << "DRONE COUNT: " << drones.size() << "\n";
     if (observation->GetMinerals() >= 200) {
         Point2D buildLocation = FindPlacementForBuilding(ABILITY_ID::BUILD_SPAWNINGPOOL);
         if (buildLocation.x != 0 && buildLocation.y != 0) {
-            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_SPAWNINGPOOL, buildLocation);
+            std::cout << "ACTUALLY RAN\n";
+            const sc2::Unit* drone = drones[0];
+
+            Actions()->UnitCommand(drone, ABILITY_ID::BUILD_SPAWNINGPOOL, buildLocation);
+
+            auto& intermediates = this->Intermediates->units;
+            intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+                [drone](const AllyUnit& ally_unit) {
+                    return ally_unit.unit == drone; // Match and remove the drone
+                }), intermediates.end());
+
             return true;
         }
     }
     return false;
 }
+
 
 std::vector<const sc2::Unit*> BasicSc2Bot::GetBuildingsNearLocation(sc2::Point2D loc, const sc2::UNIT_TYPEID& type, float radius, bool isBuilt = true) {
     std::vector<const sc2::Unit*> result;
@@ -787,23 +1040,31 @@ bool BasicSc2Bot::BuildExtractor() {
     std::vector<const Unit*> drones = GetIntermediates(UNIT_TYPEID::ZERG_DRONE);
 
     if (drones.empty()) {
-        if ((assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].empty() ||
-            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].top().second != Intermediates) && BuildDrone()) {
-                assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
+        if (buildOrders[sc2::UNIT_TYPEID::ZERG_EXTRACTOR] > 0 && BuildDrone()) {
+            --buildOrders[sc2::UNIT_TYPEID::ZERG_EXTRACTOR];
+            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
         }
         return false;
     }
     if (observation->GetMinerals() >= 25) {
         const auto& geysers = Observation()->GetUnits(sc2::Unit::Alliance::Neutral, [](const Unit &unit) {
-            return unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_VESPENEGEYSER ||
-                unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_PROTOSSVESPENEGEYSER ||
-                unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_SPACEPLATFORMGEYSER;
+            return unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_VESPENEGEYSER;
         });
         for (const auto& loc: baseLocations) {
             for (const auto &geyser : geysers) {
                 float distance = Distance2D(geyser->pos, loc);
                 if (distance < BASE_SIZE) {
-                    Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_EXTRACTOR, geyser);
+                    const sc2::Unit* drone = drones[0];
+                    std::cout << drone << "\n";
+
+                    Actions()->UnitCommand(drone, ABILITY_ID::BUILD_EXTRACTOR, geyser);
+
+                    auto& intermediates = this->Intermediates->units;
+                    intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+                        [drone](const AllyUnit& ally_unit) {
+                            return ally_unit.unit == drone; // Match and remove the drone
+                        }), intermediates.end());
+
                     return true;
                 }
             }
@@ -843,23 +1104,27 @@ std::vector<const sc2::Unit*> BasicSc2Bot::GetIntermediates(const sc2::UNIT_TYPE
     for (const auto& building : this->Intermediates->units) {
         if (building.unit != nullptr && building.unit->is_alive && building.unit->health > 0 && 
             building.unit->unit_type == type) {
-                bool is_building = false;
-                for (const auto& order : building.unit->orders) {
-                    if (order.ability_id == sc2::ABILITY_ID::BUILD_HATCHERY ||
-                        order.ability_id == sc2::ABILITY_ID::BUILD_EXTRACTOR ||
-                        order.ability_id == sc2::ABILITY_ID::BUILD_SPAWNINGPOOL ||
-                        order.ability_id == sc2::ABILITY_ID::BUILD_ROACHWARREN) {
-                        is_building = true;
-                        break;
-                    }
+            
+            bool is_busy = false;
+
+            // Check if the unit is busy (building, gathering, or returning resources)
+            for (const auto& order : building.unit->orders) {
+                if (order.ability_id != sc2::ABILITY_ID::HARVEST_GATHER &&
+                    order.ability_id != sc2::ABILITY_ID::HARVEST_RETURN) {
+                    is_busy = true;
+                    break;
                 }
-                if (!is_building) {
-                    result.push_back(building.unit);
-                }
+            }
+
+            // Add unit to result if it's not busy
+            if (!is_busy) {
+                result.push_back(building.unit);
+            }
         }
     }
     return result;
 }
+
 
 std::vector<const sc2::Unit*> BasicSc2Bot::GetBuildings(const sc2::UNIT_TYPEID& type, bool isBuilt = true) {
     std::vector<const sc2::Unit*> result;
@@ -891,16 +1156,26 @@ bool BasicSc2Bot::BuildHatchery() {
     const ObservationInterface *observation = Observation();
     std::vector<const Unit*> drones = GetIntermediates(UNIT_TYPEID::ZERG_DRONE);
     if (drones.empty()) {
-        if ((assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].empty() ||
-            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].top().second != Intermediates) && BuildDrone()) {
-                assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
+        if (buildOrders[sc2::UNIT_TYPEID::ZERG_HATCHERY] > 0 && BuildDrone()) {
+            --buildOrders[sc2::UNIT_TYPEID::ZERG_HATCHERY];
+            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
         }
         return false;
     }
+    std::cout << "GOT THIS FAR\n";
     if (observation->GetMinerals() >= 300) {
-        Point2D buildLocation = FindExpansionLocation();
+        const sc2::Unit* drone = drones[0];
+        std::cout << "CLOSE\n";
+        Point2D buildLocation = FindExpansionLocation(drone);
         if (buildLocation.x != 0 && buildLocation.y != 0) {
-            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY, buildLocation);
+            Actions()->UnitCommand(drone, ABILITY_ID::BUILD_HATCHERY, buildLocation);
+            std::cout << "DONE\n";
+            auto& intermediates = this->Intermediates->units;
+            intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+                [drone](const AllyUnit& ally_unit) {
+                    return ally_unit.unit == drone; // Match and remove the drone
+                }), intermediates.end());
+
             return true;
         }
     }
@@ -921,14 +1196,26 @@ bool BasicSc2Bot::BuildRoachWarren() {
     const ObservationInterface *observation = Observation();
     std::vector<const Unit*> drones = GetIntermediates(UNIT_TYPEID::ZERG_DRONE);
     if (drones.empty()) {
-        if ((assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].empty() ||
-            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].top().second != this->Intermediates) && BuildDrone()) {
+        if (buildOrders[sc2::UNIT_TYPEID::ZERG_ROACHWARREN] > 0 && BuildDrone()) {
+            --buildOrders[sc2::UNIT_TYPEID::ZERG_ROACHWARREN];
+            assignment_priorities[sc2::UNIT_TYPEID::ZERG_DRONE].push({999999,this->Intermediates});
+        }
         return false;
     }
-    if (!drones.empty() && observation->GetMinerals() >= 150) {
+    if (observation->GetMinerals() >= 150) {
+        std::cout << "TEST\n";
         Point2D buildLocation = FindPlacementForBuilding(ABILITY_ID::BUILD_ROACHWARREN);
         if (buildLocation.x != 0 && buildLocation.y != 0) {
-            Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_ROACHWARREN, buildLocation);
+            const sc2::Unit* drone = drones[0];
+
+            Actions()->UnitCommand(drone, ABILITY_ID::BUILD_ROACHWARREN, buildLocation);
+
+            auto& intermediates = this->Intermediates->units;
+            intermediates.erase(std::remove_if(intermediates.begin(), intermediates.end(),
+                [drone](const AllyUnit& ally_unit) {
+                    return ally_unit.unit == drone; // Match and remove the drone
+                }), intermediates.end());
+
             return true;
         }
     }
@@ -961,7 +1248,8 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
     return built;
 }
 
-#define HATCHERY_RADIUS 15.0f
+#define HATCHERY_RADIUS 20.0f
+#define BASE_RADIUS 12.0f
 /**
  * @brief Finds a suitable location for expanding the base.
  *
@@ -972,15 +1260,16 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
  * @return Point2D The coordinates where a new Hatchery can be placed for
  * expansion. Returns (0, 0) if no suitable location is found.
  */
-Point2D BasicSc2Bot::FindExpansionLocation() {
+Point2D BasicSc2Bot::FindExpansionLocation(const sc2::Unit* &unit) {
     for (const auto& loc: baseLocations) {
         std::vector<const sc2::Unit*> hatcheries = GetBuildingsNearLocation(loc, UNIT_TYPEID::ZERG_HATCHERY, HATCHERY_RADIUS, false);
         if (hatcheries.empty()) {
-            for (float dx = 0; abs(dx) <= HATCHERY_RADIUS; dx = -(abs(dx) + 1.0f)) {
-                for (float dy = 0; abs(dy) <= HATCHERY_RADIUS; dx = -(abs(dy) + 1.0f)) {
+            for (float dx = 0; abs(dx) <= BASE_RADIUS; dx = (dx <= 0) ? (abs(dx) + 1.0f) : -dx) {
+                for (float dy = 0; abs(dy) <= BASE_RADIUS; dy = (dy <= 0) ? (abs(dy) + 1.0f) : -dy) {
+                    sc2::Point2D starting_base = Observation()->GetStartLocation();
                     Point2D buildLocation = Point2D(loc.x + dx, loc.y + dy);
                     if (Query()->Placement(ABILITY_ID::BUILD_HATCHERY, buildLocation)) {
-                        return buildLocation;
+                            return buildLocation;
                     }
                 }
             }
@@ -1007,11 +1296,9 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
         }
     }
 
-    float radius = 15.0f;
-    for (float dx = -radius; dx <= radius; dx += 1.0f) {
-        for (float dy = -radius; dy <= radius; dy += 1.0f) {
-            Point2D buildLocation =
-                Point2D(hatchery_location.x + dx, hatchery_location.y + dy);
+    for (float dx = 0; abs(dx) <= BASE_RADIUS; dx = (dx <= 0) ? (abs(dx) + 1.0f) : -dx) {
+        for (float dy = 0; abs(dy) <= BASE_RADIUS; dy = (dy <= 0) ? (abs(dy) + 1.0f) : -dy) {
+            Point2D buildLocation = Point2D(hatchery_location.x + dx, hatchery_location.y + dy);
             if (Query()->Placement(ability_type, buildLocation)) {
                 return buildLocation;
             }
@@ -1034,17 +1321,6 @@ Units BasicSc2Bot::GetIdleWorkers() {
                (unit.orders.empty() ||
                 unit.orders[0].ability_id == ABILITY_ID::HARVEST_GATHER ||
                 unit.orders[0].ability_id == ABILITY_ID::HARVEST_RETURN);
-    });
-}
-
-/**
- * @brief Retrieves a list of idle larva units.
- *
- * @return Units A collection of Unit objects representing idle larva.
- */
-Units BasicSc2Bot::GetIdleLarva() {
-    return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
-        return unit.unit_type == UNIT_TYPEID::ZERG_LARVA && unit.orders.empty();
     });
 }
 
