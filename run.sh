@@ -1,8 +1,14 @@
 #!/bin/bash
 
+echo "Enter race (terran, protoss, zerg):"
+read race
+
+echo "Enter difficulty (VeryEasy, Easy, Medium, Hard, VeryHard):"
+read difficulty
+
 cd build
 make
 cd bin
-./BasicSc2Bot -c -a terran -d VeryEasy -m CactusValleyLE.SC2Map > ../../log.txt
+./BasicSc2Bot -c -a $race -d $difficulty -m CactusValleyLE.SC2Map > ../../log.txt
 cd ..
 cd ..

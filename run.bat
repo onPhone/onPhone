@@ -3,6 +3,7 @@ cd build
 cmake ../ -G "Visual Studio 17 2022"
 msbuild .\BasicSc2Bot.sln
 cd bin
-.\BasicSc2Bot.exe -c -a terran -d VeryEasy -m CactusValleyLE.SC2Map > ../../log.txt
+set /p race="Enter race (terran, protoss, zerg): "
+set /p difficulty="Enter difficulty (VeryEasy, Easy, Medium, Hard, VeryHard): "
+.\BasicSc2Bot.exe -c -a %race% -d %difficulty% -m CactusValleyLE.SC2Map > ../../log.txt
 cd ../..
-
