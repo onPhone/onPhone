@@ -10,22 +10,22 @@
 #include <queue>
 
 enum class ROLE {
-  SCOUT,
-  ATTACK,
-  WORKER,
-  BUILDING,
-  INTERMEDIATE // Refers to groups that become material for others, so drones that become buildings
+    SCOUT,
+    ATTACK,
+    WORKER,
+    BUILDING,
+    INTERMEDIATE // Refers to groups that become material for others, so drones that become buildings
 };
 
 enum class TASK {
-  UNSET, // Specifically for group task setting
-  ATTACK,
-  MINE,
-  EXTRACT,
-  SCOUT,
-  SCOUT_ALL,
-  MOVE,
-  RALLY
+    UNSET, // Specifically for group task setting
+    ATTACK,
+    MINE,
+    EXTRACT,
+    SCOUT,
+    SCOUT_ALL,
+    MOVE,
+    RALLY
 };
 
 class BasicSc2Bot;
@@ -38,69 +38,69 @@ struct AttackController;
 struct MasterController;
 
 struct AllyUnit {
-    const sc2::Unit* unit;
+    const sc2::Unit *unit;
     TASK unitTask = TASK::UNSET;
-    UnitGroup* group = nullptr;
+    UnitGroup *group = nullptr;
     sc2::UNIT_TYPEID unitType; // added due to role specific tasks being used for on death triggers
     float priorHealth;
     sc2::Point2D priorPos;
-    AllyUnit(const sc2::Unit* unit, TASK task, UnitGroup* group);
+    AllyUnit(const sc2::Unit *unit, TASK task, UnitGroup *group);
     bool underAttack() const;
     bool isMoving() const;
 };
 
 struct UnitGroup {
-  sc2::Point2D Pos;
-  int index = 0;
-  ROLE unitRole;
-  TASK unitTask;
-  int sizeTrigger = 0;
-  std::vector<AllyUnit> units;
-  UnitGroup(ROLE unitRole, TASK unitTask, int sizeTrigger);
-  void addUnit(AllyUnit unit);
+    sc2::Point2D Pos;
+    int index = 0;
+    ROLE unitRole;
+    TASK unitTask;
+    int sizeTrigger = 0;
+    std::vector<AllyUnit> units;
+    UnitGroup(ROLE unitRole, TASK unitTask, int sizeTrigger);
+    void addUnit(AllyUnit unit);
 };
 
 struct UnitController {
-    BasicSc2Bot* bot;
-    UnitController(BasicSc2Bot* bot);
-    virtual void step(AllyUnit& unit) = 0;
-    virtual void onDeath(AllyUnit& unit) = 0;
-    virtual void underAttack(AllyUnit& unit);
-    void base_step(AllyUnit& unit);
+    BasicSc2Bot *bot;
+    UnitController(BasicSc2Bot *bot);
+    virtual void step(AllyUnit &unit) = 0;
+    virtual void onDeath(AllyUnit &unit) = 0;
+    virtual void underAttack(AllyUnit &unit);
+    void base_step(AllyUnit &unit);
 };
 
 struct ScoutController : public UnitController {
-    ScoutController(BasicSc2Bot* bot);
-    void step(AllyUnit& unit);
-    void scout(AllyUnit& unit);
-    void scout_all(AllyUnit& unit);
-    void underAttack(AllyUnit& unit);
-    void onDeath(AllyUnit& unit);
+    ScoutController(BasicSc2Bot *bot);
+    void step(AllyUnit &unit);
+    void scout(AllyUnit &unit);
+    void scout_all(AllyUnit &unit);
+    void underAttack(AllyUnit &unit);
+    void onDeath(AllyUnit &unit);
 };
 
 struct WorkerController : public UnitController {
-    WorkerController(BasicSc2Bot* bot);
-    void step(AllyUnit& unit);
-    void underAttack(AllyUnit& unit);
-    void onDeath(AllyUnit& unit);
-    void extract(AllyUnit& unit);
-    void mine(AllyUnit& unit);
+    WorkerController(BasicSc2Bot *bot);
+    void step(AllyUnit &unit);
+    void underAttack(AllyUnit &unit);
+    void onDeath(AllyUnit &unit);
+    void extract(AllyUnit &unit);
+    void mine(AllyUnit &unit);
 };
 
 struct AttackController : public UnitController {
-    AttackController(BasicSc2Bot* bot);
-    void step(AllyUnit& unit);
-    void underAttack(AllyUnit& unit);
-    void onDeath(AllyUnit& unit);
+    AttackController(BasicSc2Bot *bot);
+    void step(AllyUnit &unit);
+    void underAttack(AllyUnit &unit);
+    void onDeath(AllyUnit &unit);
 };
 
 struct MasterController {
-    BasicSc2Bot* bot;
+    BasicSc2Bot *bot;
     WorkerController worker_controller;
     ScoutController scout_controller;
     AttackController attack_controller;
     std::vector<UnitGroup> unitGroups;
-    MasterController(BasicSc2Bot* bot);
+    MasterController(BasicSc2Bot *bot);
     void addUnitGroup(UnitGroup unit);
     void step();
 };
@@ -115,8 +115,8 @@ class BasicSc2Bot : public sc2::Agent {
     virtual void OnBuildingConstructionComplete(const sc2::Unit *unit) override;
 
     MasterController controller;
-    UnitGroup* Scouts;
-    UnitGroup* Larva;
+    UnitGroup *Scouts;
+    UnitGroup *Larva;
     std::vector<sc2::Point3D> baseLocations;
     std::vector<sc2::Point2D> waypoints;
 
