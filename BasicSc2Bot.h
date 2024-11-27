@@ -7,7 +7,6 @@
 #include "sc2lib/sc2_lib.h"
 #include "sc2utils/sc2_arg_parser.h"
 #include "sc2utils/sc2_manage_process.h"
-#include <queue>
 
 enum class ROLE {
     SCOUT,
@@ -122,9 +121,7 @@ class BasicSc2Bot : public sc2::Agent {
 
   private:
     void GetEnemyUnitLocations();
-    bool ResearchUpgrade(sc2::ABILITY_ID research_ability, sc2::UNIT_TYPEID required_structure);
     void tryInjection();
-    bool HasEnoughSupply(unsigned int requiredSupply) const;
     void initializeWaypoints();
     void initializeBaseLocations();
 
