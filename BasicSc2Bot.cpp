@@ -1,4 +1,5 @@
 #include "BasicSc2Bot.h"
+#include "cpp-sc2/include/sc2api/sc2_common.h"
 #include "cpp-sc2/include/sc2api/sc2_typeenums.h"
 #include <iostream>
 #include <limits>
@@ -52,6 +53,7 @@ void ScoutController::step(AllyUnit &unit) {
     switch(unit.unitTask) {
     case TASK::SCOUT: scout(unit); break;
     case TASK::SCOUT_ALL: scout_all(unit); break;
+    case TASK::FAST_SCOUT: fast_scout(unit); break;
     default: break;
     }
 };
@@ -72,12 +74,65 @@ void ScoutController::scout_all(AllyUnit &unit) {
     }
 };
 
+void ScoutController::fast_scout(AllyUnit &unit) {
+    // Scout based on possible enemy base start locations from the game info
+    const auto &gameInfo = bot->Observation()->GetGameInfo();
+    if(scoutLocations.empty()) {
+        std::cout << "Enemy Base possible locations:\n";
+        for(const auto &location : gameInfo.enemy_start_locations) {
+            scoutLocations.push_back(location);
+            std::cout << "(" << location.x << ", " << location.y << ")\n";
+        }
+    }
+    if(unit.unit != nullptr && !unit.isMoving()) {
+        if(foundEnemyLocation.x == 0 && foundEnemyLocation.y == 0) {
+            unit.group->index = (unit.group->index + 1) % scoutLocations.size();
+            bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART,
+                                        scoutLocations[unit.group->index]);
+        } else {
+            bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]);
+        }
+    }
+    // If unit sees the enemy base, set the foundEnemyLocation
+    const auto &enemy_units = bot->Observation()->GetUnits(Unit::Alliance::Enemy);
+    for(const auto &unit : enemy_units) {
+        if(unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
+           || unit->unit_type == UNIT_TYPEID::PROTOSS_NEXUS
+           || unit->unit_type == UNIT_TYPEID::ZERG_HATCHERY) {
+            if (this->foundEnemyLocation.x != 0 && this->foundEnemyLocation.y != 0) {
+                break;
+            }
+            foundEnemyLocation = unit->pos;
+            std::cout << "Enemy base found at (" << foundEnemyLocation.x << ", "
+                      << foundEnemyLocation.y << ")\n";
+            std::cout << "Enemy base type: " << unit->unit_type << "\n";
+            break;
+        }
+    }
+};
+
 void ScoutController::underAttack(AllyUnit &unit) {
-    bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]);
+    // bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]);
 };
 
 void ScoutController::onDeath(AllyUnit &unit) {
-
+    std::cout << "Scout died at (" << unit.unit->pos.x << ", " << unit.unit->pos.y << ")\n";
+    const auto &gameInfo = bot->Observation()->GetGameInfo();
+    sc2::Point2D deathPos = unit.unit->pos;
+    float minDist = std::numeric_limits<float>::max();
+    sc2::Point2D closestPoint;
+    for(const auto &location : gameInfo.enemy_start_locations) {
+        float dist = Distance2D(location, deathPos);
+        if(dist < minDist) {
+            minDist = dist;
+            closestPoint = location;
+        }
+    }
+    if (this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
+        this->foundEnemyLocation = closestPoint;
+        std::cout << "Enemy base found at (VIA DEATH) (" << foundEnemyLocation.x << ", "
+                  << foundEnemyLocation.y << ")\n";
+    }
 };
 
 WorkerController::WorkerController(BasicSc2Bot *bot) : UnitController(bot){};
@@ -265,12 +320,16 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
       = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit &unit) {
             return unit.unit_type.ToType() != sc2::UNIT_TYPEID::INVALID &&  // Valid unit
                    (unit.display_type == sc2::Unit::DisplayType::Visible || // Visible or
-                    unit.display_type == sc2::Unit::DisplayType::Snapshot
-                      && IsBuilding(unit)); // Apparently no other way sadly...
+                    unit.display_type == sc2::Unit::DisplayType::Snapshot)
+                      && IsBuilding(unit); // Apparently no other way sadly...
         });
     if(!enemy_units.empty() && enemyLoc.x == 0 && enemyLoc.y == 0) {
         enemyLoc = enemy_units[0]->pos;
         std::cout << "Enemy at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+    }
+    Point2D scoutControllerEnemyLoc = this->controller.scout_controller.foundEnemyLocation;
+    if(scoutControllerEnemyLoc.x != 0 && scoutControllerEnemyLoc.y != 0) {
+        enemyLoc = scoutControllerEnemyLoc;
     }
 }
 
@@ -451,7 +510,7 @@ void BasicSc2Bot::OnGameStart() {
     initializeBaseLocations();
 
     this->controller.addUnitGroup(UnitGroup(ROLE::INTERMEDIATE));
-    this->controller.addUnitGroup(UnitGroup(ROLE::SCOUT, TASK::SCOUT));
+    this->controller.addUnitGroup(UnitGroup(ROLE::SCOUT, TASK::FAST_SCOUT));
 
     // Retrieve pointers to the corresponding UnitGroups
     this->Larva = &(this->controller.unitGroups[0]);
@@ -704,10 +763,15 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
         break;
     }
     case UNIT_TYPEID::ZERG_OVERLORD: {
-        this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
+        // this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
         break;
     }
-    case UNIT_TYPEID::ZERG_ZERGLING:
+    case UNIT_TYPEID::ZERG_ZERGLING: 
+        if (this->controller.scout_controller.zerglingCount < 3) {
+            this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
+            this->controller.scout_controller.zerglingCount++;
+        }
+        break;
     case UNIT_TYPEID::ZERG_ROACH:
     case UNIT_TYPEID::ZERG_RAVAGER: {
         if(isAttacking) {
