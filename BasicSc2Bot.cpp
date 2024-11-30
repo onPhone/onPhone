@@ -770,10 +770,6 @@ bool BasicSc2Bot::AttackMostDangerous() {
  */
 void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
-    case UNIT_TYPEID::ZERG_EXTRACTOR: {
-        AssignWorkersToExtractor(unit);
-        break;
-    }
     case UNIT_TYPEID::ZERG_LARVA: {
         this->Larva->addUnit(AllyUnit(unit, this->Larva->unitTask, this->Larva));
         break;
