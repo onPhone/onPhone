@@ -967,7 +967,7 @@ bool BasicSc2Bot::BuildRoach() {
     }
     Units roach_warren = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_ROACHWARREN)];
     if(observation->GetMinerals() >= 75 && observation->GetVespene() >= 25
-       && observation->GetFoodUsed() < observation->GetFoodCap() && !roach_warren.empty()) {
+       && observation->GetFoodUsed() + 1 < observation->GetFoodCap() && !roach_warren.empty()) {
         Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ROACH);
         return true;
     }
