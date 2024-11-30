@@ -160,6 +160,7 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Point2D FindExpansionLocation();
     sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
+    void OnBuildingDestruction(const sc2::Unit *unit);
 };
 
 #endif

@@ -99,9 +99,7 @@ void ScoutController::fast_scout(AllyUnit &unit) {
         if(unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
            || unit->unit_type == UNIT_TYPEID::PROTOSS_NEXUS
            || unit->unit_type == UNIT_TYPEID::ZERG_HATCHERY) {
-            if (this->foundEnemyLocation.x != 0 && this->foundEnemyLocation.y != 0) {
-                break;
-            }
+            if(this->foundEnemyLocation.x != 0 && this->foundEnemyLocation.y != 0) { break; }
             foundEnemyLocation = unit->pos;
             std::cout << "Enemy base found at (" << foundEnemyLocation.x << ", "
                       << foundEnemyLocation.y << ")\n";
@@ -122,13 +120,13 @@ void ScoutController::onDeath(AllyUnit &unit) {
     float minDist = std::numeric_limits<float>::max();
     sc2::Point2D closestPoint;
     for(const auto &location : gameInfo.enemy_start_locations) {
-        float dist = Distance2D(location, deathPos);
+        float dist = DistanceSquared2D(location, deathPos);
         if(dist < minDist) {
             minDist = dist;
             closestPoint = location;
         }
     }
-    if (this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
+    if(this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
         this->foundEnemyLocation = closestPoint;
         std::cout << "Enemy base found at (VIA DEATH) (" << foundEnemyLocation.x << ", "
                   << foundEnemyLocation.y << ")\n";
@@ -321,7 +319,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
             return unit.unit_type.ToType() != sc2::UNIT_TYPEID::INVALID &&  // Valid unit
                    (unit.display_type == sc2::Unit::DisplayType::Visible || // Visible or
                     unit.display_type == sc2::Unit::DisplayType::Snapshot)
-                      && IsBuilding(unit); // Apparently no other way sadly...
+                   && IsBuilding(unit); // Apparently no other way sadly...
         });
     if(!enemy_units.empty() && enemyLoc.x == 0 && enemyLoc.y == 0) {
         enemyLoc = enemy_units[0]->pos;
@@ -517,7 +515,6 @@ void BasicSc2Bot::OnGameStart() {
     this->Scouts = &(this->controller.unitGroups[1]);
 
     const Point2D startLoc = Observation()->GetStartLocation();
-    const auto &gameInfo = Observation()->GetGameInfo();
     rallyPoint = Point2D((3 * enemyLoc.x + startLoc.x) / 4, (3 * enemyLoc.y + startLoc.y) / 4);
 
     constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].push_back(
@@ -552,13 +549,13 @@ void BasicSc2Bot::OnGameStart() {
  */
 void BasicSc2Bot::OnStep() {
     ExecuteBuildOrder();
+    GetEnemyUnitLocations();
     if(!AttackMostDangerous() && enemyLoc.x != 0 && enemyLoc.y != 0) { StartAttack(enemyLoc); }
     this->controller.step();
     for(const auto &base : baseLocations) {
         Debug()->DebugSphereOut(base, 1.5f, sc2::Colors::Green);
     }
     Debug()->SendDebug();
-    GetEnemyUnitLocations();
 }
 
 /**
@@ -592,6 +589,7 @@ bool CanAttackAir(const Unit &unit) {
     switch(unit.unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_QUEEN: return true;
     case UNIT_TYPEID::ZERG_RAVAGER: return true;
+    case sc2::UNIT_TYPEID::ZERG_ROACH: return true;
     default: return false;
     }
 }
@@ -627,7 +625,7 @@ void BasicSc2Bot::tryInjection() {
             float closest_distance = std::numeric_limits<float>::max();
 
             for(const auto &queen : queens) {
-                float distance = Distance2D(queen->pos, hatchery->pos);
+                float distance = DistanceSquared2D(queen->pos, hatchery->pos);
                 if(distance < closest_distance) {
                     closest_distance = distance;
                     closest_queen = queen;
@@ -667,12 +665,15 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
         buildOrder.push_front({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
         break;
     case UNIT_TYPEID::ZERG_EXTRACTOR:
+        OnBuildingDestruction(unit);
         buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
         break;
     case UNIT_TYPEID::ZERG_HATCHERY:
+        OnBuildingDestruction(unit);
         buildOrder.push_front({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
         break;
     case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
+        OnBuildingDestruction(unit);
         buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
         break;
     default: break;
@@ -712,16 +713,27 @@ bool BasicSc2Bot::AttackMostDangerous() {
     if(buildOrder.empty()) {
         // currently attacks weakest enemy unit
         const auto enemy_units = Observation()->GetUnits(Unit::Alliance::Enemy);
-        float min_hp_all = std::numeric_limits<float>::max();
-        float min_hp_ground = std::numeric_limits<float>::max();
+        const UnitTypes unit_data = Observation()->GetUnitTypeData();
+        float max_danger_all = 0;
+        float max_danger_ground = 0;
         for(const auto &unit : enemy_units) {
-            if(unit->health + unit->shield < min_hp_all) {
-                min_hp_all = unit->health + unit->shield;
-                most_dangerous_all = unit;
-            }
-            if(!unit->is_flying && unit->health + unit->shield < min_hp_ground) {
-                min_hp_ground = unit->health + unit->shield;
-                most_dangerous_ground = unit;
+            UnitTypeData current_unit_data
+              = unit_data.at(static_cast<uint32_t>(unit->unit_type.ToType()));
+            float unit_health = unit->health + unit->shield;
+            float unit_DPS = current_unit_data.weapons.data()->damage_
+                             * current_unit_data.weapons.data()->attacks
+                             * current_unit_data.weapons.data()->speed;
+            float unit_danger = unit_DPS / unit_health;
+            if(DistanceSquared2D(unit->pos, enemyLoc)
+               < DistanceSquared2D(unit->pos, Observation()->GetStartLocation())) {
+                if(unit_danger > max_danger_all) {
+                    max_danger_all = unit_danger;
+                    most_dangerous_all = unit;
+                }
+                if(!unit->is_flying && unit_danger > max_danger_ground) {
+                    max_danger_ground = unit_danger;
+                    most_dangerous_ground = unit;
+                }
             }
         }
         if(most_dangerous_all) {
@@ -729,7 +741,11 @@ bool BasicSc2Bot::AttackMostDangerous() {
               = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
                     return IsAttackUnit(unit) && CanAttackAir(unit);
                 });
+            const auto ravager_units
+              = Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_RAVAGER));
             Actions()->UnitCommand(attack_units_all, ABILITY_ID::ATTACK_ATTACK,
+                                   most_dangerous_all->pos);
+            Actions()->UnitCommand(ravager_units, ABILITY_ID::EFFECT_CORROSIVEBILE,
                                    most_dangerous_all->pos);
         }
         if(most_dangerous_ground) {
@@ -766,8 +782,8 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
         // this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
         break;
     }
-    case UNIT_TYPEID::ZERG_ZERGLING: 
-        if (this->controller.scout_controller.zerglingCount < 3) {
+    case UNIT_TYPEID::ZERG_ZERGLING:
+        if(this->controller.scout_controller.zerglingCount < 3) {
             this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
             this->controller.scout_controller.zerglingCount++;
         }
@@ -798,6 +814,24 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
 void BasicSc2Bot::OnBuildingConstructionComplete(const Unit *unit) {
     constructedBuildings[GetBuildingIndex(unit->unit_type)].push_back(unit);
     if(unit->unit_type == UNIT_TYPEID::ZERG_EXTRACTOR) { AssignWorkersToExtractor(unit); }
+}
+
+/**
+ * @brief Handles building destruction.
+ *
+ * This function is called whenever a building is destroyed. It removes the
+ * destroyed building from the appropriate tracking container.
+ *
+ * @param unit Pointer to the destroyed building.
+ */
+void BasicSc2Bot::OnBuildingDestruction(const Unit *unit) {
+    for(auto it = constructedBuildings[GetBuildingIndex(unit->unit_type)].begin();
+        it != constructedBuildings[GetBuildingIndex(unit->unit_type)].end(); ++it) {
+        if((*it)->tag == unit->tag) {
+            constructedBuildings[GetBuildingIndex(unit->unit_type)].erase(it);
+            return;
+        }
+    }
 }
 
 /**
