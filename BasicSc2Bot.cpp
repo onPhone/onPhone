@@ -1,11 +1,8 @@
 #include "BasicSc2Bot.h"
-#include "cpp-sc2/include/sc2api/sc2_common.h"
 #include "cpp-sc2/include/sc2api/sc2_typeenums.h"
 #include <cstddef>
 #include <iostream>
 #include <limits>
-#include <sc2api/sc2_typeenums.h>
-#include <sc2api/sc2_unit_filters.h>
 
 using namespace sc2;
 
@@ -15,19 +12,20 @@ using namespace sc2;
 #define CLUSTER_DISTANCE 20.0f
 
 namespace std {
-    template <> struct hash<sc2::UnitTypeID> {
-        size_t operator()(const sc2::UnitTypeID &unit_type) const noexcept {
+    template <> struct hash<UnitTypeID> {
+        size_t operator()(const UnitTypeID &unit_type) const noexcept {
             return std::hash<int>()(static_cast<int>(unit_type.ToType()));
         }
     };
 }
+
 /**
  * @brief Checks if an ally unit is moving.
  *
  * This function checks if the given ally unit is currently moving by comparing
  * its current position to its previous position. If the unit has moved more than
  * a small epsilon distance, it is considered to be moving.
- * 
+ *
  * @return true if the unit is moving, false otherwise
  */
 bool AllyUnit::isMoving() const {
@@ -45,12 +43,12 @@ bool AllyUnit::isMoving() const {
  *
  * This constructor initializes an AllyUnit object with the given unit, task, and group.
  * It also sets the prior health of the unit to its current health.
- * 
+ *
  * @param unit Pointer to the unit
  * @param task Task to assign to the unit
  * @param group Pointer to the unit group
  */
-AllyUnit::AllyUnit(const sc2::Unit *unit, TASK task = TASK::UNSET, UnitGroup *group = nullptr) {
+AllyUnit::AllyUnit(const Unit *unit, TASK task = TASK::UNSET, UnitGroup *group = nullptr) {
     this->unit = unit;
     this->unitTask = task;
     this->priorHealth = unit->health;
@@ -63,7 +61,7 @@ AllyUnit::AllyUnit(const sc2::Unit *unit, TASK task = TASK::UNSET, UnitGroup *gr
  * This function checks if the given ally unit is currently under attack by comparing
  * its current health to its previous health. If the unit's health has decreased, it is
  * considered to be under attack.
- * 
+ *
  * @return true if the unit is under attack, false otherwise
  */
 bool AllyUnit::underAttack() const {
@@ -71,7 +69,7 @@ bool AllyUnit::underAttack() const {
     return this->unit->health < priorHealth;
 };
 
-UnitController::UnitController(BasicSc2Bot &bot) : bot(bot){};
+UnitController::UnitController(BasicSc2Bot &bot) : bot(bot) {};
 
 /**
  * @brief Handles an ally unit being under attack.
@@ -80,9 +78,7 @@ UnitController::UnitController(BasicSc2Bot &bot) : bot(bot){};
  *
  * @param unit The ally unit under attack
  */
-void UnitController::underAttack(AllyUnit &unit) {
-};
-
+void UnitController::underAttack(AllyUnit &unit) {};
 
 /**
  * @brief Executes the base step for an ally unit.
@@ -101,7 +97,7 @@ void UnitController::base_step(AllyUnit &unit) {
     }
 };
 
-ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot){};
+ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the scout unit.
@@ -132,8 +128,7 @@ void ScoutController::scoutBase(AllyUnit &unit) {
     if(base_locations.empty()) { initializeBaseLocations(); }
     if(unit.unit != nullptr && unit.unit->orders.empty()) {
         unit.group->index = (unit.group->index + 1) % base_locations.size();
-        bot.Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART,
-                                   base_locations[unit.group->index]);
+        bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, base_locations[unit.group->index]);
     }
 };
 
@@ -149,8 +144,7 @@ void ScoutController::scoutAll(AllyUnit &unit) {
     if(all_locations.empty()) { initializeAllLocations(); }
     if(unit.unit != nullptr && unit.unit->orders.empty()) {
         unit.group->index = (unit.group->index + 1) % all_locations.size();
-        bot.Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART,
-                                   all_locations[unit.group->index]);
+        bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, all_locations[unit.group->index]);
     }
 };
 
@@ -168,7 +162,7 @@ void ScoutController::scoutFast(AllyUnit &unit) {
     if(unit.unit != nullptr && unit.unit->orders.empty()) {
         if(foundEnemyLocation.x == 0 && foundEnemyLocation.y == 0) {
             unit.group->index = (unit.group->index + 1) % fast_locations.size();
-            bot.Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART,
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART,
                                        fast_locations[unit.group->index]);
         } else {
             scoutAll(unit);
@@ -198,23 +192,24 @@ void ScoutController::scoutFast(AllyUnit &unit) {
  * @param unit The scout unit under attack
  */
 void ScoutController::underAttack(AllyUnit &unit) {
-    // Disabled for now so the zergling goes deep enough to properly detect the buildings, or dies which also allows us to detect the base location.
-    // bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]); 
+    // Disabled for now so the zergling goes deep enough to properly detect the buildings, or dies
+    // which also allows us to detect the base location.
+    // bot->Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, bot->waypoints[0]);
 };
 
 /**
  * @brief Handles the scout unit dying.
  *
- * This function handles the scout unit dying by 
+ * This function handles the scout unit dying by
  * and updating the found enemy location if the scout unit dies.
  *
  * @param unit The scout unit that died
  */
 void ScoutController::onDeath(AllyUnit &unit) {
     std::cout << "Scout died at (" << unit.priorPos.x << ", " << unit.priorPos.y << ")\n";
-    sc2::Point2D deathPos = unit.priorPos;
+    Point2D deathPos = unit.priorPos;
     float minDist = std::numeric_limits<float>::max();
-    sc2::Point2D closestPoint;
+    Point2D closestPoint;
     for(const auto &location : fast_locations) {
         float dist = DistanceSquared2D(location, deathPos);
         if(dist < minDist) {
@@ -239,14 +234,14 @@ void ScoutController::initializeFastLocations() {
 }
 
 void ScoutController::initializeAllLocations() {
-    const sc2::GameInfo &game_info = bot.Observation()->GetGameInfo();
-    sc2::Point2D map_center = (game_info.playable_min + game_info.playable_max) * 0.5f;
+    const GameInfo &game_info = bot.Observation()->GetGameInfo();
+    Point2D map_center = (game_info.playable_min + game_info.playable_max) * 0.5f;
     std::cout << game_info.playable_min.x << " " << game_info.playable_min.y << "\n";
     std::cout << game_info.playable_max.x << " " << game_info.playable_max.y << "\n";
     const float step_size = 15.0f; // Distance between waypoints
     for(float x = game_info.playable_min.x; x < game_info.playable_max.x; x += step_size) {
         for(float y = game_info.playable_min.y; y < game_info.playable_max.y; y += step_size) {
-            sc2::Point2D waypoint(x, y);
+            Point2D waypoint(x, y);
             // Check if the waypoint is reachable
             if(bot.Query()->PathingDistance(map_center, waypoint) > 0) {
                 all_locations.push_back(waypoint);
@@ -256,15 +251,14 @@ void ScoutController::initializeAllLocations() {
 };
 
 void ScoutController::initializeBaseLocations() {
-    sc2::Point3D starting_base = bot.Observation()->GetStartLocation();
+    Point3D starting_base = bot.Observation()->GetStartLocation();
     base_locations.push_back(starting_base);
 
-    const auto &units
-      = bot.Observation()->GetUnits(sc2::Unit::Alliance::Neutral, [](const Unit &unit) {
-            return unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD
-                   || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750
-                   || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_VESPENEGEYSER;
-        });
+    const auto &units = bot.Observation()->GetUnits(Unit::Alliance::Neutral, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD
+               || unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD750
+               || unit.unit_type == UNIT_TYPEID::NEUTRAL_VESPENEGEYSER;
+    });
 
     std::map<unsigned int, unsigned int> clusterSize;
 
@@ -286,7 +280,7 @@ void ScoutController::initializeBaseLocations() {
     }
 
     std::sort(base_locations.begin(), base_locations.end(),
-              [&starting_base](const sc2::Point3D &a, const sc2::Point3D &b) {
+              [&starting_base](const Point3D &a, const Point3D &b) {
                   return DistanceSquared2D(a, starting_base) < DistanceSquared2D(b, starting_base);
               });
 
@@ -297,9 +291,9 @@ void ScoutController::initializeBaseLocations() {
     }
 }
 
-WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
+WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot) {};
 
-/** 
+/**
  * @brief Steps the worker unit.
  *
  * This function steps the worker unit by executing the appropriate action
@@ -326,27 +320,26 @@ void WorkerController::step(AllyUnit &unit) {
 void WorkerController::extract(AllyUnit &unit) {
     bool is_extracting = false;
     for(const auto &order : unit.unit->orders) {
-        if(order.ability_id == sc2::ABILITY_ID::HARVEST_GATHER) {
-            const sc2::Unit *target = bot.Observation()->GetUnit(order.target_unit_tag);
-            if(target != nullptr && target->unit_type == sc2::UNIT_TYPEID::ZERG_EXTRACTOR) {
+        if(order.ability_id == ABILITY_ID::HARVEST_GATHER) {
+            const Unit *target = bot.Observation()->GetUnit(order.target_unit_tag);
+            if(target != nullptr && target->unit_type == UNIT_TYPEID::ZERG_EXTRACTOR) {
                 is_extracting = true;
             }
             break;
-        } else if(order.ability_id == sc2::ABILITY_ID::HARVEST_RETURN) {
+        } else if(order.ability_id == ABILITY_ID::HARVEST_RETURN) {
             is_extracting = true;
             break;
         }
     }
     if(!is_extracting) {
-        auto extractors
-          = bot.Observation()->GetUnits(sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
-                return unit.unit_type == sc2::UNIT_TYPEID::ZERG_EXTRACTOR
-                       && unit.assigned_harvesters < unit.ideal_harvesters;
-            });
+        auto extractors = bot.Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+            return unit.unit_type == UNIT_TYPEID::ZERG_EXTRACTOR
+                   && unit.assigned_harvesters < unit.ideal_harvesters;
+        });
         if(!extractors.empty()) {
-            sc2::Point3D starting_base = bot.Observation()->GetStartLocation();
+            Point3D starting_base = bot.Observation()->GetStartLocation();
             std::sort(extractors.begin(), extractors.end(),
-                      [&starting_base](const sc2::Unit *a, const sc2::Unit *b) {
+                      [&starting_base](const Unit *a, const Unit *b) {
                           return DistanceSquared2D(a->pos, starting_base)
                                  < DistanceSquared2D(b->pos, starting_base);
                       });
@@ -366,49 +359,48 @@ void WorkerController::extract(AllyUnit &unit) {
 void WorkerController::mine(AllyUnit &unit) {
     bool is_extracting = false;
     for(const auto &order : unit.unit->orders) {
-        if(order.ability_id == sc2::ABILITY_ID::HARVEST_GATHER) {
-            const sc2::Unit *target = bot.Observation()->GetUnit(order.target_unit_tag);
+        if(order.ability_id == ABILITY_ID::HARVEST_GATHER) {
+            const Unit *target = bot.Observation()->GetUnit(order.target_unit_tag);
             if(target != nullptr
-               && (target->unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD
-                   || target->unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750
-                   || target->unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD
-                   || target->unit_type == sc2::UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750)) {
+               && (target->unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD
+                   || target->unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD750
+                   || target->unit_type == UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD
+                   || target->unit_type == UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750)) {
                 is_extracting = true;
             }
             break;
-        } else if(order.ability_id == sc2::ABILITY_ID::HARVEST_RETURN) {
+        } else if(order.ability_id == ABILITY_ID::HARVEST_RETURN) {
             is_extracting = true;
             break;
         }
     }
     if(!is_extracting) {
-        auto minerals
-          = bot.Observation()->GetUnits(sc2::Unit::Alliance::Neutral, [](const sc2::Unit &unit) {
-                return (unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD
-                        || unit.unit_type == sc2::UNIT_TYPEID::NEUTRAL_MINERALFIELD750)
-                       && unit.mineral_contents != 0;
-            });
+        auto minerals = bot.Observation()->GetUnits(Unit::Alliance::Neutral, [](const Unit &unit) {
+            return (unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD
+                    || unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD750)
+                   && unit.mineral_contents != 0;
+        });
 
         if(!minerals.empty()) {
-            sc2::Point3D starting_base = bot.Observation()->GetStartLocation();
+            Point3D starting_base = bot.Observation()->GetStartLocation();
 
             std::sort(minerals.begin(), minerals.end(),
-                      [&starting_base](const sc2::Unit *a, const sc2::Unit *b) {
+                      [&starting_base](const Unit *a, const Unit *b) {
                           return DistanceSquared2D(a->pos, starting_base)
                                  < DistanceSquared2D(b->pos, starting_base);
                       });
 
             for(const auto *mineral : minerals) {
-                const auto &workers = bot.Observation()->GetUnits(
-                  sc2::Unit::Alliance::Self, [](const sc2::Unit &unit) {
-                      return unit.unit_type == sc2::UNIT_TYPEID::ZERG_DRONE;
-                  });
+                const auto &workers
+                  = bot.Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+                        return unit.unit_type == UNIT_TYPEID::ZERG_DRONE;
+                    });
 
                 for(const auto *worker : workers) {
                     for(const auto &order : worker->orders) {
-                        if(order.ability_id == sc2::ABILITY_ID::HARVEST_GATHER
+                        if(order.ability_id == ABILITY_ID::HARVEST_GATHER
                            && order.target_unit_tag == mineral->tag) {
-                            bot.Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, mineral);
+                            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, mineral);
                             return;
                         }
                     }
@@ -425,9 +417,7 @@ void WorkerController::mine(AllyUnit &unit) {
  *
  * @param unit The worker unit under attack
  */
-void WorkerController::underAttack(AllyUnit &unit) {
-
-};
+void WorkerController::underAttack(AllyUnit &unit) {};
 
 /**
  * @brief Handles the worker unit dying.
@@ -436,12 +426,9 @@ void WorkerController::underAttack(AllyUnit &unit) {
  *
  * @param unit The worker unit that died
  */
-void WorkerController::onDeath(AllyUnit &unit) {
+void WorkerController::onDeath(AllyUnit &unit) {};
 
-};
-
-AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot){};
-
+AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the given ally attack unit.
@@ -466,9 +453,7 @@ void AttackController::step(AllyUnit &unit) {
  *
  * @param unit The attack unit under attack
  */
-void AttackController::underAttack(AllyUnit &unit) {
-
-};
+void AttackController::underAttack(AllyUnit &unit) {};
 
 /**
  * @brief Handles the attack unit dying.
@@ -477,19 +462,21 @@ void AttackController::underAttack(AllyUnit &unit) {
  *
  * @param unit The attack unit that died
  */
-void AttackController::onDeath(AllyUnit &unit) {
-
-};
+void AttackController::onDeath(AllyUnit &unit) {};
 
 void AttackController::rally(AllyUnit &unit) {
-    if(unit.unit != nullptr && this->bot.enemyLoc.x != 0 && this->bot.enemyLoc.y != 0) {
-        bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, rallyPoint);
-        if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER
-           && DistanceSquared2D(unit.unit->pos, rallyPoint) < BASE_SIZE) {
-            isAttacking = true;
+    if(unit.unit != nullptr) {
+        if(this->bot.enemyLoc.x != 0 && this->bot.enemyLoc.y != 0) {
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, rallyPoint);
+            if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER
+               && DistanceSquared2D(unit.unit->pos, rallyPoint) < BASE_SIZE) {
+                isAttacking = true;
+            }
+        } else {
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
         }
     }
-}
+};
 
 void AttackController::attack(AllyUnit &unit) {
     if(unit.unit != nullptr) {
@@ -521,24 +508,17 @@ void AttackController::attack(AllyUnit &unit) {
  * @return true if at least one enemy unit was targeted for attack, false otherwise
  */
 void AttackController::getMostDangerous() {
-    std::cout << "started get most dangerous\n";
     most_dangerous_all = nullptr;
     most_dangerous_ground = nullptr;
     // currently attacks weakest enemy unit
-    std::cout << "1\n";
     const auto enemy_units = bot.Observation()->GetUnits(Unit::Alliance::Enemy);
     const UnitTypes unit_data = bot.Observation()->GetUnitTypeData();
-    std::cout << "2\n";
     float max_danger_all = std::numeric_limits<float>::lowest();
     float max_danger_ground = std::numeric_limits<float>::lowest();
-    std::cout << "3\n";
     for(const auto &unit : enemy_units) {
-        std::cout << "4\n";
         UnitTypeData current_unit_data
           = unit_data.at(static_cast<uint32_t>(unit->unit_type.ToType()));
-        std::cout << "5\n";
         float unit_health = unit->health + unit->shield;
-        std::cout << "5.1" << unit_health << "\n";
         float unit_DPS;
         if(current_unit_data.weapons.data() != nullptr) {
             unit_DPS = current_unit_data.weapons.data()->damage_
@@ -547,14 +527,9 @@ void AttackController::getMostDangerous() {
         } else {
             unit_DPS = 0;
         }
-        std::cout << "5.2\n";
-
-        std::cout << "5.3" << unit_DPS << "\n";
         float unit_danger = unit_DPS / (unit_health); // prevent division by 0
-        std::cout << "6" << unit_danger << "\n";
         if(DistanceSquared2D(unit->pos, bot.enemyLoc)
            < DistanceSquared2D(unit->pos, bot.Observation()->GetStartLocation())) {
-            std::cout << "7\n";
             if(unit_danger > max_danger_all) {
                 max_danger_all = unit_danger;
                 most_dangerous_all = unit;
@@ -564,12 +539,7 @@ void AttackController::getMostDangerous() {
                 most_dangerous_ground = unit;
             }
         }
-        std::cout << "8\n";
     }
-    std::cout << "9\n";
-    if(most_dangerous_all) { std::cout << "most dangerous all found\n"; }
-    if(most_dangerous_ground) { std::cout << "most dangerous ground found\n"; }
-    std::cout << "finished get most dangerousn\n";
 }
 
 /**
@@ -586,7 +556,7 @@ bool AttackController::canAttackAir(AllyUnit &unit) {
         switch(unit.unit->unit_type.ToType()) {
         case UNIT_TYPEID::ZERG_QUEEN: return true;
         case UNIT_TYPEID::ZERG_RAVAGER: return true;
-        case sc2::UNIT_TYPEID::ZERG_ROACH: return true;
+        case UNIT_TYPEID::ZERG_ROACH: return true;
         default: return false;
         }
     }
@@ -602,50 +572,48 @@ bool AttackController::canAttackAir(AllyUnit &unit) {
  * @param unit The unit to check
  * @return true if the unit is a building, false otherwise
  */
-bool IsBuilding(const sc2::Unit &unit) {
+bool IsBuilding(const Unit &unit) {
     // Define a set of all building types for faster lookup.
-    static const std::unordered_set<sc2::UnitTypeID> building_types = {
-      sc2::UNIT_TYPEID::TERRAN_COMMANDCENTER,
-      sc2::UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
-      sc2::UNIT_TYPEID::TERRAN_REFINERY,
-      sc2::UNIT_TYPEID::TERRAN_BARRACKS,
-      sc2::UNIT_TYPEID::TERRAN_ENGINEERINGBAY,
-      sc2::UNIT_TYPEID::TERRAN_MISSILETURRET,
-      sc2::UNIT_TYPEID::TERRAN_FACTORY,
-      sc2::UNIT_TYPEID::TERRAN_STARPORT,
-      sc2::UNIT_TYPEID::TERRAN_ARMORY,
-      sc2::UNIT_TYPEID::TERRAN_FUSIONCORE,
-      sc2::UNIT_TYPEID::PROTOSS_NEXUS,
-      sc2::UNIT_TYPEID::PROTOSS_PYLON,
-      sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR,
-      sc2::UNIT_TYPEID::PROTOSS_GATEWAY,
-      sc2::UNIT_TYPEID::PROTOSS_FORGE,
-      sc2::UNIT_TYPEID::PROTOSS_CYBERNETICSCORE,
-      sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON,
-      sc2::UNIT_TYPEID::PROTOSS_ROBOTICSFACILITY,
-      sc2::UNIT_TYPEID::PROTOSS_TEMPLARARCHIVE,
-      sc2::UNIT_TYPEID::PROTOSS_DARKSHRINE,
-      sc2::UNIT_TYPEID::PROTOSS_FLEETBEACON,
-      sc2::UNIT_TYPEID::PROTOSS_TWILIGHTCOUNCIL,
-      sc2::UNIT_TYPEID::ZERG_HATCHERY,
-      sc2::UNIT_TYPEID::ZERG_EXTRACTOR,
-      sc2::UNIT_TYPEID::ZERG_SPAWNINGPOOL,
-      sc2::UNIT_TYPEID::ZERG_EVOLUTIONCHAMBER,
-      sc2::UNIT_TYPEID::ZERG_HYDRALISKDEN,
-      sc2::UNIT_TYPEID::ZERG_SPIRE,
-      sc2::UNIT_TYPEID::ZERG_ULTRALISKCAVERN,
-      sc2::UNIT_TYPEID::ZERG_INFESTATIONPIT,
-      sc2::UNIT_TYPEID::ZERG_NYDUSNETWORK,
-      sc2::UNIT_TYPEID::ZERG_BANELINGNEST,
-      sc2::UNIT_TYPEID::ZERG_LURKERDENMP,
-      sc2::UNIT_TYPEID::ZERG_NYDUSCANAL
+    static const std::unordered_set<UnitTypeID> building_types = {
+      UNIT_TYPEID::TERRAN_COMMANDCENTER,
+      UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
+      UNIT_TYPEID::TERRAN_REFINERY,
+      UNIT_TYPEID::TERRAN_BARRACKS,
+      UNIT_TYPEID::TERRAN_ENGINEERINGBAY,
+      UNIT_TYPEID::TERRAN_MISSILETURRET,
+      UNIT_TYPEID::TERRAN_FACTORY,
+      UNIT_TYPEID::TERRAN_STARPORT,
+      UNIT_TYPEID::TERRAN_ARMORY,
+      UNIT_TYPEID::TERRAN_FUSIONCORE,
+      UNIT_TYPEID::PROTOSS_NEXUS,
+      UNIT_TYPEID::PROTOSS_PYLON,
+      UNIT_TYPEID::PROTOSS_ASSIMILATOR,
+      UNIT_TYPEID::PROTOSS_GATEWAY,
+      UNIT_TYPEID::PROTOSS_FORGE,
+      UNIT_TYPEID::PROTOSS_CYBERNETICSCORE,
+      UNIT_TYPEID::PROTOSS_PHOTONCANNON,
+      UNIT_TYPEID::PROTOSS_ROBOTICSFACILITY,
+      UNIT_TYPEID::PROTOSS_TEMPLARARCHIVE,
+      UNIT_TYPEID::PROTOSS_DARKSHRINE,
+      UNIT_TYPEID::PROTOSS_FLEETBEACON,
+      UNIT_TYPEID::PROTOSS_TWILIGHTCOUNCIL,
+      UNIT_TYPEID::ZERG_HATCHERY,
+      UNIT_TYPEID::ZERG_EXTRACTOR,
+      UNIT_TYPEID::ZERG_SPAWNINGPOOL,
+      UNIT_TYPEID::ZERG_EVOLUTIONCHAMBER,
+      UNIT_TYPEID::ZERG_HYDRALISKDEN,
+      UNIT_TYPEID::ZERG_SPIRE,
+      UNIT_TYPEID::ZERG_ULTRALISKCAVERN,
+      UNIT_TYPEID::ZERG_INFESTATIONPIT,
+      UNIT_TYPEID::ZERG_NYDUSNETWORK,
+      UNIT_TYPEID::ZERG_BANELINGNEST,
+      UNIT_TYPEID::ZERG_LURKERDENMP,
+      UNIT_TYPEID::ZERG_NYDUSCANAL
       // Add any other buildings
     };
 
     return building_types.find(unit.unit_type) != building_types.end();
 }
-
-#define ENEMY_EPSILON 1.0f
 
 /**
  * @brief Gets the locations of enemy base if it is visible and sets enemyLoc.
@@ -653,20 +621,19 @@ bool IsBuilding(const sc2::Unit &unit) {
  * This function retrieves the locations of all enemy units that are either
  * visible or in snapshot and then establishes the enemy base location based
  * on whether they are buildings.
- * 
+ *
  */
 void BasicSc2Bot::GetEnemyUnitLocations() {
     const ObservationInterface *observation = Observation();
-    std::vector<sc2::Point3D> enemy_unit_locations;
+    std::vector<Point3D> enemy_unit_locations;
 
     // Get all enemy units that are either visible or in snapshot
-    Units enemy_units
-      = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit &unit) {
-            return unit.unit_type.ToType() != sc2::UNIT_TYPEID::INVALID &&  // Valid unit
-                   (unit.display_type == sc2::Unit::DisplayType::Visible || // Visible or
-                    unit.display_type == sc2::Unit::DisplayType::Snapshot)
-                   && IsBuilding(unit); // Apparently no other way sadly...
-        });
+    Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
+        return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
+               (unit.display_type == Unit::DisplayType::Visible || // Visible or
+                unit.display_type == Unit::DisplayType::Snapshot)
+               && IsBuilding(unit); // Apparently no other way sadly...
+    });
     if(!enemy_units.empty() && enemyLoc.x == 0 && enemyLoc.y == 0) {
         enemyLoc = enemy_units[0]->pos;
         std::cout << "Enemy at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
@@ -678,7 +645,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
 }
 
 MasterController::MasterController(BasicSc2Bot &bot)
-    : bot(bot), worker_controller(bot), scout_controller(bot), attack_controller(bot){};
+    : bot(bot), worker_controller(bot), scout_controller(bot), attack_controller(bot) {};
 
 /**
  * @brief Adds a unit group to the master controller.
@@ -690,7 +657,7 @@ MasterController::MasterController(BasicSc2Bot &bot)
 void MasterController::addUnitGroup(UnitGroup unitGroup) { unitGroups.push_back(unitGroup); }
 
 UnitGroup::UnitGroup(ROLE unitRole, TASK unitTask = TASK::UNSET, int sizeTrigger = 0)
-    : unitRole(unitRole), unitTask(unitTask), sizeTrigger(sizeTrigger){};
+    : unitRole(unitRole), unitTask(unitTask), sizeTrigger(sizeTrigger) {};
 
 /**
  * @brief Adds a unit to the unit group.
@@ -714,9 +681,7 @@ void MasterController::step() {
     for(auto &unitGroup : this->unitGroups) {
         switch(unitGroup.unitRole) {
         case ROLE::ATTACK:
-            attack_controller.rallyPoint
-              = Point2D((3 * bot.enemyLoc.x + bot.Observation()->GetStartLocation().x) / 4,
-                        (3 * bot.enemyLoc.y + bot.Observation()->GetStartLocation().y) / 4);
+            attack_controller.rallyPoint = bot.startLoc + (bot.enemyLoc - bot.startLoc) * 0.75f;
             if(attack_controller.isAttacking) {
                 attack_controller.getMostDangerous();
                 unitGroup.unitTask = TASK::ATTACK;
@@ -754,7 +719,7 @@ void MasterController::step() {
     }
 };
 
-BasicSc2Bot::BasicSc2Bot() : controller(*this){};
+BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
 
 /**
  * @brief Checks if the bot has enough supply to build a unit.
@@ -781,13 +746,12 @@ bool BasicSc2Bot::HasEnoughSupply(unsigned int requiredSupply) const {
  * @param required_structure The type ID of the structure required to research the upgrade
  * @return true if the upgrade was successfully researched, false otherwise
  */
-bool BasicSc2Bot::ResearchUpgrade(sc2::ABILITY_ID research_ability,
-                                  sc2::UNIT_TYPEID required_structure) {
+bool BasicSc2Bot::ResearchUpgrade(ABILITY_ID research_ability, UNIT_TYPEID required_structure) {
     const ObservationInterface *observation = Observation();
 
     // Find the required structure
     Units research_structures
-      = Observation()->GetUnits(Unit::Alliance::Self, [required_structure](const sc2::Unit &unit) {
+      = Observation()->GetUnits(Unit::Alliance::Self, [required_structure](const Unit &unit) {
             return unit.unit_type == required_structure && unit.build_progress == 1.0f
                    &&                   // Fully built
                    unit.orders.empty(); // Not already researching
@@ -799,7 +763,7 @@ bool BasicSc2Bot::ResearchUpgrade(sc2::ABILITY_ID research_ability,
 
     // Locate the specific upgrade data
     const auto &all_upgrades = observation->GetUpgradeData(); // Get all upgrade data
-    const sc2::UpgradeData *upgrade_data = nullptr;
+    const UpgradeData *upgrade_data = nullptr;
 
     for(const auto &upgrade : all_upgrades) {
         if(upgrade.ability_id == research_ability) {
@@ -820,7 +784,7 @@ bool BasicSc2Bot::ResearchUpgrade(sc2::ABILITY_ID research_ability,
     }
 
     // Issue the research command
-    const sc2::Unit *structure = research_structures[0];
+    const Unit *structure = research_structures[0];
     Actions()->UnitCommand(structure, research_ability);
 
     std::cout << "Researching ability: " << static_cast<int>(research_ability)
@@ -841,6 +805,12 @@ bool BasicSc2Bot::ResearchUpgrade(sc2::ABILITY_ID research_ability,
  * - Researching upgrades
  */
 void BasicSc2Bot::OnGameStart() {
+    const auto &gameInfo = Observation()->GetGameInfo();
+    startLoc = Observation()->GetStartLocation();
+    std::cout << "Start location: (" << startLoc.x << ", " << startLoc.y << ")\n";
+    mapCenter = (gameInfo.playable_min + gameInfo.playable_max) * 0.5f;
+    std::cout << "Map center: (" << mapCenter.x << ", " << mapCenter.y << ")\n";
+
     this->controller.addUnitGroup(UnitGroup(ROLE::INTERMEDIATE));
     this->controller.addUnitGroup(UnitGroup(ROLE::SCOUT, TASK::FAST_SCOUT, 3));
     this->controller.addUnitGroup(UnitGroup(ROLE::ATTACK, TASK::RALLY));
@@ -885,7 +855,7 @@ void BasicSc2Bot::OnStep() {
     ExecuteBuildOrder();
     this->controller.step();
     for(const auto &base : controller.scout_controller.base_locations) {
-        Debug()->DebugSphereOut(base, 1.5f, sc2::Colors::Green);
+        Debug()->DebugSphereOut(base, 1.5f, Colors::Green);
     }
     Debug()->SendDebug();
 }
@@ -918,20 +888,20 @@ bool IsAttackUnit(const Unit &unit) {
 void BasicSc2Bot::tryInjection() {
     const ObservationInterface *observation = Observation();
 
-    Units queens = observation->GetUnits(Unit::Alliance::Self, [](const sc2::Unit &unit) {
-        return unit.unit_type == sc2::UNIT_TYPEID::ZERG_QUEEN && unit.energy >= 25;
+    Units queens = observation->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_QUEEN && unit.energy >= 25;
     });
 
     if(queens.empty()) { return; }
 
-    Units hatcheries = constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)];
+    Units hatcheries = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)];
 
     if(hatcheries.empty()) { return; }
 
     for(const auto &hatchery : hatcheries) {
         bool already_injected = false;
         for(const auto &order : hatchery->orders) {
-            if(order.ability_id == sc2::ABILITY_ID::EFFECT_INJECTLARVA) {
+            if(order.ability_id == ABILITY_ID::EFFECT_INJECTLARVA) {
                 already_injected = true;
                 break;
             }
@@ -939,7 +909,7 @@ void BasicSc2Bot::tryInjection() {
 
         if(!already_injected) {
             // Find the closest Queen to this Hatchery
-            const sc2::Unit *closest_queen = nullptr;
+            const Unit *closest_queen = nullptr;
             float closest_distance = std::numeric_limits<float>::max();
 
             for(const auto &queen : queens) {
@@ -951,8 +921,7 @@ void BasicSc2Bot::tryInjection() {
             }
 
             if(closest_queen) {
-                Actions()->UnitCommand(closest_queen, sc2::ABILITY_ID::EFFECT_INJECTLARVA,
-                                       hatchery);
+                Actions()->UnitCommand(closest_queen, ABILITY_ID::EFFECT_INJECTLARVA, hatchery);
             }
         }
     }
@@ -1315,6 +1284,8 @@ bool BasicSc2Bot::BuildHatchery() {
         Point2D buildLocation = FindExpansionLocation();
         if(buildLocation.x != 0 && buildLocation.y != 0) {
             Actions()->UnitCommand(drones[0], ABILITY_ID::BUILD_HATCHERY, buildLocation);
+            std::cout << "Hatchery built at: " << buildLocation.x << ", " << buildLocation.y
+                      << std::endl;
             return true;
         }
     }

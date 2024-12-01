@@ -9,6 +9,6 @@ read difficulty
 cd build
 make
 cd bin
-./BasicSc2Bot -c -a $race -d $difficulty -m CactusValleyLE.SC2Map > ../../log.txt
+./BasicSc2Bot -c -a $race -d $difficulty -m CactusValleyLE.SC2Map
 cd ..
 cd ..
