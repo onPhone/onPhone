@@ -114,9 +114,9 @@ void ScoutController::underAttack(AllyUnit &unit) {
 };
 
 void ScoutController::onDeath(AllyUnit &unit) {
-    std::cout << "Scout died at (" << unit.unit->pos.x << ", " << unit.unit->pos.y << ")\n";
+    std::cout << "Scout died at (" << unit.priorPos.x << ", " << unit.priorPos.y << ")\n";
     const auto &gameInfo = bot->Observation()->GetGameInfo();
-    sc2::Point2D deathPos = unit.unit->pos;
+    sc2::Point2D deathPos = unit.priorPos;
     float minDist = std::numeric_limits<float>::max();
     sc2::Point2D closestPoint;
     for(const auto &location : gameInfo.enemy_start_locations) {
