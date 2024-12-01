@@ -1,13 +1,14 @@
 #ifndef BASIC_SC2_BOT_H_
 #define BASIC_SC2_BOT_H_
 
+#include "cpp-sc2/include/sc2api/sc2_common.h"
 #include "sc2api/sc2_api.h"
 #include "sc2api/sc2_args.h"
 #include "sc2api/sc2_unit_filters.h"
 #include "sc2lib/sc2_lib.h"
 #include "sc2utils/sc2_arg_parser.h"
 #include "sc2utils/sc2_manage_process.h"
-
+#include <sc2api/sc2_typeenums.h>
 
 enum class ROLE {
     SCOUT,
@@ -62,8 +63,8 @@ struct UnitGroup {
 };
 
 struct UnitController {
-    BasicSc2Bot *bot;
-    UnitController(BasicSc2Bot *bot);
+    BasicSc2Bot &bot;
+    UnitController(BasicSc2Bot &bot);
     virtual void step(AllyUnit &unit) = 0;
     virtual void onDeath(AllyUnit &unit) = 0;
     virtual void underAttack(AllyUnit &unit);
@@ -71,20 +72,24 @@ struct UnitController {
 };
 
 struct ScoutController : public UnitController {
-    ScoutController(BasicSc2Bot *bot);
+    ScoutController(BasicSc2Bot &bot);
     void step(AllyUnit &unit);
-    void scout(AllyUnit &unit);
-    void scout_all(AllyUnit &unit);
-    void fast_scout(AllyUnit &unit);
+    void scoutBase(AllyUnit &unit);
+    void scoutAll(AllyUnit &unit);
+    void scoutFast(AllyUnit &unit);
     void underAttack(AllyUnit &unit);
     void onDeath(AllyUnit &unit);
-    int zerglingCount = 0;
-    std::vector<sc2::Point2D> scoutLocations;
+    void initializeFastLocations();
+    void initializeBaseLocations();
+    void initializeAllLocations();
+    std::vector<sc2::Point2D> fast_locations;
+    std::vector<sc2::Point3D> base_locations;
+    std::vector<sc2::Point2D> all_locations;
     sc2::Point2D foundEnemyLocation;
 };
 
 struct WorkerController : public UnitController {
-    WorkerController(BasicSc2Bot *bot);
+    WorkerController(BasicSc2Bot &bot);
     void step(AllyUnit &unit);
     void underAttack(AllyUnit &unit);
     void onDeath(AllyUnit &unit);
@@ -93,19 +98,27 @@ struct WorkerController : public UnitController {
 };
 
 struct AttackController : public UnitController {
-    AttackController(BasicSc2Bot *bot);
+    AttackController(BasicSc2Bot &bot);
     void step(AllyUnit &unit);
     void underAttack(AllyUnit &unit);
     void onDeath(AllyUnit &unit);
+    void rally(AllyUnit &unit);
+    void attack(AllyUnit &unit);
+    void getMostDangerous();
+    bool canAttackAir(AllyUnit &unit);
+    const sc2::Unit *most_dangerous_all = nullptr;
+    const sc2::Unit *most_dangerous_ground = nullptr;
+    bool isAttacking = false;
+    sc2::Point2D rallyPoint;
 };
 
 struct MasterController {
-    BasicSc2Bot *bot;
+    BasicSc2Bot &bot;
     WorkerController worker_controller;
     ScoutController scout_controller;
     AttackController attack_controller;
     std::vector<UnitGroup> unitGroups;
-    MasterController(BasicSc2Bot *bot);
+    MasterController(BasicSc2Bot &bot);
     void addUnitGroup(UnitGroup unit);
     void step();
 };
@@ -122,25 +135,19 @@ class BasicSc2Bot : public sc2::Agent {
     MasterController controller;
     UnitGroup *Scouts;
     UnitGroup *Larva;
-    std::vector<sc2::Point3D> baseLocations;
-    std::vector<sc2::Point2D> waypoints;
+    UnitGroup *Attackers;
+    sc2::Point2D enemyLoc;
 
   private:
     void GetEnemyUnitLocations();
     bool ResearchUpgrade(sc2::ABILITY_ID research_ability, sc2::UNIT_TYPEID required_structure);
     void tryInjection();
     bool HasEnoughSupply(unsigned int requiredSupply) const;
-    void initializeWaypoints();
-    void initializeBaseLocations();
 
     sc2::Units constructedBuildings[4]{};
     std::deque<std::pair<int, std::function<bool()>>> buildOrder;
-    sc2::Point2D enemyLoc;
-    sc2::Point2D rallyPoint;
-    bool isAttacking = false;
 
     void ExecuteBuildOrder();
-    void StartAttack(const sc2::Point2D &loc);
     bool AttackMostDangerous();
     bool BuildDrone();
     bool BuildOverlord();
@@ -160,6 +167,7 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Point2D FindExpansionLocation();
     sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
+    void OnBuildingDestruction(const sc2::Unit *unit);
 };
 
 #endif
