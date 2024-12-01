@@ -1,4 +1,5 @@
 #include "BasicSc2Bot.h"
+#include "cpp-sc2/include/sc2api/sc2_common.h"
 #include "cpp-sc2/include/sc2api/sc2_typeenums.h"
 #include <iostream>
 #include <limits>
@@ -9,6 +10,15 @@ using namespace sc2;
 #define EPSILON 0.000001
 #define BASE_SIZE 15.0f
 
+/**
+ * @brief Checks if an ally unit is moving.
+ *
+ * This function checks if the given ally unit is currently moving by comparing
+ * its current position to its previous position. If the unit has moved more than
+ * a small epsilon distance, it is considered to be moving.
+ *
+ * @return true if the unit is moving, false otherwise
+ */
 bool AllyUnit::isMoving() const {
     if(this->unit == nullptr) { return false; }
 
@@ -19,6 +29,16 @@ bool AllyUnit::isMoving() const {
     }
 }
 
+/**
+ * @brief Constructs an AllyUnit object with the given unit, task, and group.
+ *
+ * This constructor initializes an AllyUnit object with the given unit, task, and group.
+ * It also sets the prior health of the unit to its current health.
+ *
+ * @param unit Pointer to the unit
+ * @param task Task to assign to the unit
+ * @param group Pointer to the unit group
+ */
 AllyUnit::AllyUnit(const Unit *unit, TASK task = TASK::UNSET, UnitGroup *group = nullptr) {
     this->unit = unit;
     this->unitTask = task;
@@ -26,6 +46,15 @@ AllyUnit::AllyUnit(const Unit *unit, TASK task = TASK::UNSET, UnitGroup *group =
     this->group = group;
 };
 
+/**
+ * @brief Checks if an ally unit is under attack.
+ *
+ * This function checks if the given ally unit is currently under attack by comparing
+ * its current health to its previous health. If the unit's health has decreased, it is
+ * considered to be under attack.
+ *
+ * @return true if the unit is under attack, false otherwise
+ */
 bool AllyUnit::underAttack() const {
     if(this->unit == nullptr) { return false; }
     return this->unit->health < priorHealth;
@@ -33,8 +62,24 @@ bool AllyUnit::underAttack() const {
 
 UnitController::UnitController(BasicSc2Bot *bot) : bot(bot) {};
 
+/**
+ * @brief Handles an ally unit being under attack.
+ *
+ * This function handles an ally unit being under attack.
+ *
+ * @param unit The ally unit under attack
+ */
 void UnitController::underAttack(AllyUnit &unit) {};
 
+/**
+ * @brief Executes the base step for an ally unit.
+ *
+ * This function executes the base step for an ally unit, which is common to all unit roles.
+ * It calls the appropriate step function based on whether the unit is currently
+ * under attack or not.
+ *
+ * @param unit The ally unit to step
+ */
 void UnitController::base_step(AllyUnit &unit) {
     if(unit.underAttack()) {
         underAttack(unit);
@@ -45,14 +90,31 @@ void UnitController::base_step(AllyUnit &unit) {
 
 ScoutController::ScoutController(BasicSc2Bot *bot) : UnitController(bot) {};
 
+/**
+ * @brief Steps the scout unit.
+ *
+ * This function steps the scout unit by moving it to the next location
+ * based on its the scouting type in its task.
+ *
+ * @param unit The scout unit to step
+ */
 void ScoutController::step(AllyUnit &unit) {
     switch(unit.unitTask) {
     case TASK::SCOUT: scout(unit); break;
     case TASK::SCOUT_ALL: scout_all(unit); break;
+    case TASK::FAST_SCOUT: fast_scout(unit); break;
     default: break;
     }
 };
 
+/**
+ * @brief Scouts the next base location.
+ *
+ * This function moves the scout unit to the next base location in the list
+ * of base locations.
+ *
+ * @param unit The scout unit to move
+ */
 void ScoutController::scout(AllyUnit &unit) {
     if(unit.unit != nullptr && !unit.isMoving()) {
         unit.group->index = (unit.group->index + 1) % bot->baseLocations.size();
@@ -61,6 +123,14 @@ void ScoutController::scout(AllyUnit &unit) {
     }
 };
 
+/**
+ * @brief Scouts all base locations.
+ *
+ * This function moves the scout unit to all base locations in the list
+ * of base locations.
+ *
+ * @param unit The scout unit to move
+ */
 void ScoutController::scout_all(AllyUnit &unit) {
     if(unit.unit != nullptr && !unit.isMoving()) {
         unit.group->index = (unit.group->index + 1) % bot->waypoints.size();
@@ -69,14 +139,100 @@ void ScoutController::scout_all(AllyUnit &unit) {
     }
 };
 
-void ScoutController::underAttack(AllyUnit &unit) {
-    bot->Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, bot->waypoints[0]);
+/**
+ * @brief Fast scouts the enemy base.
+ *
+ * This function fast scouts the enemy base by moving the scout unit to the
+ * next possible enemy base location.
+ *
+ * @param unit The scout unit to move
+ */
+void ScoutController::fast_scout(AllyUnit &unit) {
+    // Scout based on possible enemy base start locations from the game info
+    const auto &gameInfo = bot->Observation()->GetGameInfo();
+    if(scoutLocations.empty()) {
+        std::cout << "Enemy Base possible locations:\n";
+        for(const auto &location : gameInfo.enemy_start_locations) {
+            scoutLocations.push_back(location);
+            std::cout << "(" << location.x << ", " << location.y << ")\n";
+        }
+    }
+    if(unit.unit != nullptr && !unit.isMoving()) {
+        if(foundEnemyLocation.x == 0 && foundEnemyLocation.y == 0) {
+            unit.group->index = (unit.group->index + 1) % scoutLocations.size();
+            bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART,
+                                        scoutLocations[unit.group->index]);
+        } else {
+            bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]);
+        }
+    }
+    // If unit sees the enemy base, set the foundEnemyLocation
+    const auto &enemy_units = bot->Observation()->GetUnits(Unit::Alliance::Enemy);
+    for(const auto &unit : enemy_units) {
+        if(unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
+           || unit->unit_type == UNIT_TYPEID::PROTOSS_NEXUS
+           || unit->unit_type == UNIT_TYPEID::ZERG_HATCHERY) {
+            if(this->foundEnemyLocation.x != 0 && this->foundEnemyLocation.y != 0) { break; }
+            foundEnemyLocation = unit->pos;
+            std::cout << "Enemy base found at (" << foundEnemyLocation.x << ", "
+                      << foundEnemyLocation.y << ")\n";
+            std::cout << "Enemy base type: " << unit->unit_type << "\n";
+            break;
+        }
+    }
 };
 
-void ScoutController::onDeath(AllyUnit &unit) {};
+/**
+ * @brief Handles the scout unit being under attack.
+ *
+ * This function handles the scout unit being under attack
+ *
+ * @param unit The scout unit under attack
+ */
+void ScoutController::underAttack(AllyUnit &unit) {
+    // Disabled for now so the zergling goes deep enough to properly detect the buildings, or dies
+    // which also allows us to detect the base location.
+    // bot->Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, bot->waypoints[0]);
+};
+
+/**
+ * @brief Handles the scout unit dying.
+ *
+ * This function handles the scout unit dying by
+ * and updating the found enemy location if the scout unit dies.
+ *
+ * @param unit The scout unit that died
+ */
+void ScoutController::onDeath(AllyUnit &unit) {
+    std::cout << "Scout died at (" << unit.unit->pos.x << ", " << unit.unit->pos.y << ")\n";
+    const auto &gameInfo = bot->Observation()->GetGameInfo();
+    sc2::Point2D deathPos = unit.unit->pos;
+    float minDist = std::numeric_limits<float>::max();
+    sc2::Point2D closestPoint;
+    for(const auto &location : gameInfo.enemy_start_locations) {
+        float dist = Distance2D(location, deathPos);
+        if(dist < minDist) {
+            minDist = dist;
+            closestPoint = location;
+        }
+    }
+    if(this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
+        this->foundEnemyLocation = closestPoint;
+        std::cout << "Enemy base found at (VIA DEATH) (" << foundEnemyLocation.x << ", "
+                  << foundEnemyLocation.y << ")\n";
+    }
+};
 
 WorkerController::WorkerController(BasicSc2Bot *bot) : UnitController(bot) {};
 
+/**
+ * @brief Steps the worker unit.
+ *
+ * This function steps the worker unit by executing the appropriate action
+ * based on the unit's current task.
+ *
+ * @param unit The worker unit to step
+ */
 void WorkerController::step(AllyUnit &unit) {
     switch(unit.unitTask) {
     case TASK::EXTRACT: extract(unit); break;
@@ -85,6 +241,14 @@ void WorkerController::step(AllyUnit &unit) {
     }
 };
 
+/**
+ * @brief Extracts resources from the nearest extractor.
+ *
+ * This function extracts resources from the nearest extractor by issuing
+ * a smart command to the worker unit.
+ *
+ * @param unit The worker unit to extract resources
+ */
 void WorkerController::extract(AllyUnit &unit) {
     bool is_extracting = false;
     for(const auto &order : unit.unit->orders) {
@@ -116,6 +280,14 @@ void WorkerController::extract(AllyUnit &unit) {
     }
 };
 
+/**
+ * @brief Mines resources from the nearest mineral field.
+ *
+ * This function mines resources from the nearest mineral field by issuing
+ * a smart command to the worker unit.
+ *
+ * @param unit The worker unit to mine resources
+ */
 void WorkerController::mine(AllyUnit &unit) {
     bool is_extracting = false;
     for(const auto &order : unit.unit->orders) {
@@ -170,12 +342,34 @@ void WorkerController::mine(AllyUnit &unit) {
     }
 };
 
+/**
+ * @brief Handles the worker unit being under attack.
+ *
+ * This function handles the worker unit being under attack
+ *
+ * @param unit The worker unit under attack
+ */
 void WorkerController::underAttack(AllyUnit &unit) {};
 
+/**
+ * @brief Handles the worker unit dying.
+ *
+ * This function handles the worker unit dying
+ *
+ * @param unit The worker unit that died
+ */
 void WorkerController::onDeath(AllyUnit &unit) {};
 
 AttackController::AttackController(BasicSc2Bot *bot) : UnitController(bot) {};
 
+/**
+ * @brief Steps the given ally attack unit.
+ *
+ * This function steps the attack unit by executing the appropriate action
+ * based on the unit's current task.
+ *
+ * @param unit The attack unit to step
+ */
 void AttackController::step(AllyUnit &unit) {
     switch(unit.unitTask) {
     case TASK::ATTACK: break;
@@ -184,8 +378,22 @@ void AttackController::step(AllyUnit &unit) {
     }
 };
 
+/**
+ * @brief Handles the attack unit being under attack.
+ *
+ * This function handles the attack unit being under attack
+ *
+ * @param unit The attack unit under attack
+ */
 void AttackController::underAttack(AllyUnit &unit) {};
 
+/**
+ * @brief Handles the attack unit dying.
+ *
+ * This function handles the attack unit dying
+ *
+ * @param unit The attack unit that died
+ */
 void AttackController::onDeath(AllyUnit &unit) {};
 
 namespace std {
@@ -196,7 +404,16 @@ namespace std {
     };
 }
 
-bool IsBuilding(const Unit &unit) {
+/**
+ * @brief Checks if the given unit is a building.
+ *
+ * This function checks if the given unit is a building by comparing its
+ * unit type to a set of known building types.
+ *
+ * @param unit The unit to check
+ * @return true if the unit is a building, false otherwise
+ */
+bool IsBuilding(const sc2::Unit &unit) {
     // Define a set of all building types for faster lookup.
     static const std::unordered_set<UnitTypeID> building_types = {
       UNIT_TYPEID::TERRAN_COMMANDCENTER,
@@ -241,36 +458,69 @@ bool IsBuilding(const Unit &unit) {
 
 #define ENEMY_EPSILON 1.0f
 
+/**
+ * @brief Gets the locations of enemy base if it is visible and sets enemyLoc.
+ *
+ * This function retrieves the locations of all enemy units that are either
+ * visible or in snapshot and then establishes the enemy base location based
+ * on whether they are buildings.
+ *
+ */
 void BasicSc2Bot::GetEnemyUnitLocations() {
     const ObservationInterface *observation = Observation();
     std::vector<Point3D> enemy_unit_locations;
 
     // Get all enemy units that are either visible or in snapshot
-    Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
-        return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
-               (unit.display_type == Unit::DisplayType::Visible || // Visible or
-                unit.display_type == Unit::DisplayType::Snapshot
-                  && IsBuilding(unit)); // Apparently no other way sadly...
-    });
+    Units enemy_units
+      = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit &unit) {
+            return unit.unit_type.ToType() != sc2::UNIT_TYPEID::INVALID &&  // Valid unit
+                   (unit.display_type == sc2::Unit::DisplayType::Visible || // Visible or
+                    unit.display_type == sc2::Unit::DisplayType::Snapshot)
+                   && IsBuilding(unit); // Apparently no other way sadly...
+        });
     if(!enemy_units.empty() && enemyLoc.x == 0 && enemyLoc.y == 0) {
         enemyLoc = enemy_units[0]->pos;
         std::cout << "Enemy at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+    }
+    Point2D scoutControllerEnemyLoc = this->controller.scout_controller.foundEnemyLocation;
+    if(scoutControllerEnemyLoc.x != 0 && scoutControllerEnemyLoc.y != 0) {
+        enemyLoc = scoutControllerEnemyLoc;
     }
 }
 
 MasterController::MasterController(BasicSc2Bot *bot)
     : worker_controller(bot), scout_controller(bot), attack_controller(bot) {};
 
-void MasterController::addUnitGroup(UnitGroup unit) { unitGroups.push_back(unit); }
+/**
+ * @brief Adds a unit group to the master controller.
+ *
+ * This function adds a unit group to the master controller.
+ *
+ * @param unitGroup The unitGroup group to add
+ */
+void MasterController::addUnitGroup(UnitGroup unitGroup) { unitGroups.push_back(unitGroup); }
 
 UnitGroup::UnitGroup(ROLE unitRole, TASK unitTask = TASK::UNSET, int sizeTrigger = 0)
     : unitRole(unitRole), unitTask(unitTask), sizeTrigger(sizeTrigger) {};
 
+/**
+ * @brief Adds a unit to the unit group.
+ *
+ * This function adds a unit to the unit group.
+ *
+ * @param unit The unit to add
+ */
 void UnitGroup::addUnit(AllyUnit unit) {
     this->units.push_back(unit);
     if(this->unitTask != TASK::UNSET) { unit.unitTask = this->unitTask; }
 }
 
+/**
+ * @brief Steps the master controller
+ *
+ * This function steps the master controller by iterating through all unit groups
+ * and executing the base step for each unit in the group.
+ */
 void MasterController::step() {
     for(auto &unitGroup : this->unitGroups) {
         std::vector<AllyUnit> new_units;
@@ -305,6 +555,11 @@ void MasterController::step() {
 
 BasicSc2Bot::BasicSc2Bot() : controller(this) {};
 
+/**
+ * @brief Initializes waypoints for the scouts.
+ *
+ * This function initializes waypoints for the scouts to move to.
+ */
 void BasicSc2Bot::initializeWaypoints() {
     const GameInfo &game_info = Observation()->GetGameInfo();
     Point2D map_center = (game_info.playable_min + game_info.playable_max) * 0.5f;
@@ -324,6 +579,12 @@ void BasicSc2Bot::initializeWaypoints() {
 
 #define CLUSTER_DISTANCE 20.0f
 
+/**
+ * @brief Initializes base locations for the scouts.
+ *
+ * This function initializes base locations for the scouts by identifying
+ * the locations of all mineral fields and vespene geysers.
+ */
 void BasicSc2Bot::initializeBaseLocations() {
     Point3D starting_base = Observation()->GetStartLocation();
     baseLocations.push_back(starting_base);
@@ -380,7 +641,7 @@ void BasicSc2Bot::OnGameStart() {
     initializeBaseLocations();
 
     this->controller.addUnitGroup(UnitGroup(ROLE::INTERMEDIATE));
-    this->controller.addUnitGroup(UnitGroup(ROLE::SCOUT, TASK::SCOUT));
+    this->controller.addUnitGroup(UnitGroup(ROLE::SCOUT, TASK::FAST_SCOUT));
 
     // Retrieve pointers to the corresponding UnitGroups
     this->Larva = &(this->controller.unitGroups[0]);
@@ -464,6 +725,13 @@ bool CanAttackAir(const Unit &unit) {
     }
 }
 
+/**
+ * @brief Tries to inject larvae into hatcheries using queens.
+ *
+ * This function checks if there are any available queens with enough energy
+ * to inject larvae into hatcheries. If a queen is available, it is commanded
+ * to inject larvae into the hatchery closest to it.
+ */
 void BasicSc2Bot::tryInjection() {
     const ObservationInterface *observation = Observation();
 
@@ -518,7 +786,6 @@ void BasicSc2Bot::tryInjection() {
  *
  * @param unit Pointer to the destroyed unit
  */
-
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING:
@@ -626,10 +893,15 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
         break;
     }
     case UNIT_TYPEID::ZERG_OVERLORD: {
-        this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
+        // this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
         break;
     }
     case UNIT_TYPEID::ZERG_ZERGLING:
+        if(this->controller.scout_controller.zerglingCount < 3) {
+            this->Scouts->addUnit(AllyUnit(unit, this->Scouts->unitTask, this->Scouts));
+            this->controller.scout_controller.zerglingCount++;
+        }
+        break;
     case UNIT_TYPEID::ZERG_ROACH:
     case UNIT_TYPEID::ZERG_RAVAGER: {
         if(isAttacking) {

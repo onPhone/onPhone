@@ -23,6 +23,7 @@ enum class TASK {
     EXTRACT,
     SCOUT,
     SCOUT_ALL,
+    FAST_SCOUT,
     MOVE,
     RALLY
 };
@@ -73,8 +74,12 @@ struct ScoutController : public UnitController {
     void step(AllyUnit &unit);
     void scout(AllyUnit &unit);
     void scout_all(AllyUnit &unit);
+    void fast_scout(AllyUnit &unit);
     void underAttack(AllyUnit &unit);
     void onDeath(AllyUnit &unit);
+    int zerglingCount = 0;
+    std::vector<sc2::Point2D> scoutLocations;
+    sc2::Point2D foundEnemyLocation;
 };
 
 struct WorkerController : public UnitController {
