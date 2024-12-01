@@ -137,6 +137,8 @@ class BasicSc2Bot : public sc2::Agent {
     UnitGroup *Larva;
     UnitGroup *Attackers;
     sc2::Point2D enemyLoc;
+    sc2::Point2D startLoc;
+    sc2::Point2D mapCenter;
 
   private:
     void GetEnemyUnitLocations();
@@ -148,7 +150,6 @@ class BasicSc2Bot : public sc2::Agent {
     std::deque<std::pair<int, std::function<bool()>>> buildOrder;
 
     void ExecuteBuildOrder();
-    bool AttackMostDangerous();
     bool BuildDrone();
     bool BuildOverlord();
     bool BuildZergling();
