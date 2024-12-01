@@ -227,7 +227,7 @@ void ScoutController::initializeFastLocations() {
 
 void ScoutController::initializeAllLocations() {
     const GameInfo &game_info = bot.Observation()->GetGameInfo();
-    all_locations.push_back(bot.Observation()->GetStartLocation());
+    all_locations.push_back(bot.startLoc);
     Point2D map_center = (game_info.playable_min + game_info.playable_max) * 0.5f;
     std::cout << game_info.playable_min.x << " " << game_info.playable_min.y << "\n";
     std::cout << game_info.playable_max.x << " " << game_info.playable_max.y << "\n";
@@ -420,8 +420,6 @@ void WorkerController::underAttack(AllyUnit &unit) {};
  * @param unit The worker unit that died
  */
 void WorkerController::onDeath(AllyUnit &unit) {};
-}
-;
 
 AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot){};
 
@@ -630,8 +628,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
                     unit.display_type == sc2::Unit::DisplayType::Snapshot)
                    && (unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
                        || unit.unit_type == UNIT_TYPEID::PROTOSS_NEXUS
-                       || unit.unit_type
-                            == UNIT_TYPEID::ZERG_HATCHERY);
+                       || unit.unit_type == UNIT_TYPEID::ZERG_HATCHERY);
         });
     if(!enemy_units.empty()) {
         enemyLoc = enemy_units[0]->pos;
