@@ -911,23 +911,6 @@ bool IsAttackUnit(const Unit &unit) {
 /**
  * @brief Tries to inject larvae into hatcheries using queens.
  *
- * This function checks if the given unit is one of the Zerg units
- * (Queen or Ravager) that can attack air units.
- *
- * @param unit The unit to check
- * @return true if the unit can attack air units, false otherwise
- */
-bool CanAttackAir(const Unit &unit) {
-    switch(unit.unit_type.ToType()) {
-    case UNIT_TYPEID::ZERG_QUEEN: return true;
-    case UNIT_TYPEID::ZERG_RAVAGER: return true;
-    default: return false;
-    }
-}
-
-/**
- * @brief Tries to inject larvae into hatcheries using queens.
- *
  * This function checks if there are any available queens with enough energy
  * to inject larvae into hatcheries. If a queen is available, it is commanded
  * to inject larvae into the hatchery closest to it.
