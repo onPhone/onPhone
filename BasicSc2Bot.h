@@ -86,6 +86,7 @@ struct ScoutController : public UnitController {
     std::vector<sc2::Point3D> base_locations;
     std::vector<sc2::Point2D> all_locations;
     sc2::Point2D foundEnemyLocation;
+    std::size_t zerglingCount = 0;
 };
 
 struct WorkerController : public UnitController {
@@ -169,6 +170,7 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
     void OnBuildingDestruction(const sc2::Unit *unit);
+    bool IsGeyser(const sc2::Unit &unit);
 };
 
 #endif
