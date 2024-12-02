@@ -110,7 +110,7 @@ struct AttackController : public UnitController {
     const sc2::Unit *most_dangerous_all = nullptr;
     const sc2::Unit *most_dangerous_ground = nullptr;
     bool isAttacking = false;
-    float approachDistance = 25.0f;
+    float approachDistance = 30.0f;
 };
 
 struct MasterController {
@@ -143,35 +143,31 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Point2D mapCenter;
 
   private:
-    void GetEnemyUnitLocations();
-    bool ResearchUpgrade(sc2::ABILITY_ID research_ability, sc2::UNIT_TYPEID required_structure);
-    void tryInjection();
-    bool HasEnoughSupply(unsigned int requiredSupply) const;
-
     sc2::Units constructedBuildings[4]{};
     std::deque<std::pair<int, std::function<bool()>>> buildOrder;
 
-    void ExecuteBuildOrder();
+    void AssignWorkersToExtractor(const sc2::Unit *extractor);
     bool BuildDrone();
-    bool BuildOverlord();
-    bool BuildZergling();
-    bool BuildSpawningPool();
     bool BuildExtractor();
     bool BuildHatchery();
+    bool BuildOverlord();
     bool BuildQueen();
-    bool BuildRoachWarren();
-    bool ResearchMetabolicBoost();
-    bool BuildRoach();
     bool BuildRavager();
-    sc2::Units GetIdleWorkers();
-    sc2::Units GetIdleLarva();
-    void AssignWorkersToExtractor(const sc2::Unit *extractor);
-    int GetBuildingIndex(sc2::UNIT_TYPEID type);
+    bool BuildRoach();
+    bool BuildRoachWarren();
+    bool BuildSpawningPool();
+    bool BuildZergling();
+    void ExecuteBuildOrder();
     sc2::Point2D FindExpansionLocation();
     sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
-    void OnBuildingDestruction(const sc2::Unit *unit);
+    void GetEnemyUnitLocations();
+    int GetBuildingIndex(sc2::UNIT_TYPEID type);
+    sc2::Units GetIdleLarva();
     bool IsGeyser(const sc2::Unit &unit);
+    void OnBuildingDestruction(const sc2::Unit *unit);
+    bool ResearchMetabolicBoost();
+    void tryInjection();
 };
 
 #endif
