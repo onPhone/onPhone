@@ -995,9 +995,23 @@ void BasicSc2Bot::OnBuildingDestruction(const Unit *unit) {
  * construction when the build order cannot be followed.
  */
 void BasicSc2Bot::ExecuteBuildOrder() {
+    const int currentSupply = Observation()->GetFoodUsed();
+    const int maxSupply = Observation()->GetFoodCap();
+
+    if(controller.attack_controller.isAttacking && currentSupply >= maxSupply - 4) {
+        Units overlords_queued
+          = Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+                return (unit.unit_type == UNIT_TYPEID::ZERG_LARVA && !unit.orders.empty()
+                        && unit.orders.front().ability_id == ABILITY_ID::TRAIN_OVERLORD)
+                       || (unit.unit_type == UNIT_TYPEID::ZERG_EGG && !unit.orders.empty()
+                           && unit.orders.front().ability_id == ABILITY_ID::TRAIN_OVERLORD);
+            });
+
+        if(overlords_queued.empty()) { BuildOverlord(); }
+    }
+
     if(buildOrder.empty()) return;
 
-    const int currentSupply = Observation()->GetFoodUsed();
     const auto &nextBuild = buildOrder.front();
 
     if(currentSupply >= nextBuild.first) {
@@ -1050,17 +1064,16 @@ bool BasicSc2Bot::BuildOverlord() {
     const ObservationInterface *observation = Observation();
     const int OVERLORD_MINERAL_COST = 100;
 
+    if(observation->GetMinerals() < OVERLORD_MINERAL_COST) { return false; }
+
     Units larva = GetIdleLarva();
     if(larva.empty()) {
         tryInjection();
         return false;
     }
 
-    if(observation->GetMinerals() >= OVERLORD_MINERAL_COST) {
-        Actions()->UnitCommand(larva.front(), ABILITY_ID::TRAIN_OVERLORD);
-        return true;
-    }
-    return false;
+    Actions()->UnitCommand(larva.front(), ABILITY_ID::TRAIN_OVERLORD);
+    return true;
 }
 
 /**
