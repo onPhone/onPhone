@@ -1,6 +1,5 @@
 #include "BasicSc2Bot.h"
-#include "cpp-sc2/include/sc2api/sc2_interfaces.h"
-#include "cpp-sc2/include/sc2api/sc2_typeenums.h"
+
 #include <cstddef>
 #include <iostream>
 #include <limits>
