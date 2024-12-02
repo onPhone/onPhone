@@ -83,7 +83,7 @@ struct ScoutController : public UnitController {
     void initializeBaseLocations();
     void initializeAllLocations();
     std::vector<sc2::Point2D> fast_locations;
-    std::vector<sc2::Point3D> base_locations;
+    std::vector<sc2::Point2D> base_locations;
     std::vector<sc2::Point2D> all_locations;
     sc2::Point2D foundEnemyLocation;
     std::size_t zerglingCount = 0;
@@ -111,6 +111,7 @@ struct AttackController : public UnitController {
     const sc2::Unit *most_dangerous_ground = nullptr;
     bool isAttacking = false;
     sc2::Point2D rallyPoint;
+    float rallyMultiplier = 0.70f;
 };
 
 struct MasterController {
@@ -137,6 +138,7 @@ class BasicSc2Bot : public sc2::Agent {
     UnitGroup *Scouts;
     UnitGroup *Larva;
     UnitGroup *Attackers;
+    UnitGroup *Workers;
     sc2::Point2D enemyLoc;
     sc2::Point2D startLoc;
     sc2::Point2D mapCenter;
