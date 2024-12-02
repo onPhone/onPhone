@@ -1393,19 +1393,14 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
 
     if(spawning_pool.empty() || observation->GetMinerals() < METABOLIC_BOOST_COST
        || observation->GetVespene() < METABOLIC_BOOST_COST) {
-        return !spawning_pool[0]->orders.empty()
+        return !spawning_pool.empty() && !spawning_pool[0]->orders.empty()
                && spawning_pool[0]->orders[0].ability_id
                     == ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST;
     }
 
     const Unit *pool = spawning_pool[0];
-    if(!pool->orders.empty()
-       && pool->orders[0].ability_id == ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST) {
-        return true;
-    }
-
     Actions()->UnitCommand(pool, ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
-    return true;
+    return false;
 }
 
 /**
