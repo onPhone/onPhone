@@ -13,7 +13,7 @@ struct UnitGroup {
     TASK unitTask;
     int sizeTrigger = 0;
     std::vector<AllyUnit> units;
-    UnitGroup(ROLE unitRole, TASK unitTask, int sizeTrigger);
+    UnitGroup(ROLE unitRole, TASK unitTask = TASK::UNSET, int sizeTrigger = 0);
     void addUnit(AllyUnit unit);
 };
 

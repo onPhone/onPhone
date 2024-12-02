@@ -5,30 +5,33 @@
 #include "MasterController.h"
 #include "UnitGroup.h"
 #include "sc2-includes.h"
+#include "utilities.h"
 
-class BasicSc2Bot : public sc2::Agent {
+using namespace sc2;
+
+class BasicSc2Bot : public Agent {
   public:
     BasicSc2Bot();
     virtual void OnGameStart() override;
     virtual void OnStep() override;
-    virtual void OnUnitCreated(const sc2::Unit *unit) override;
-    virtual void OnUnitDestroyed(const sc2::Unit *unit) override;
-    virtual void OnBuildingConstructionComplete(const sc2::Unit *unit) override;
+    virtual void OnUnitCreated(const Unit *unit) override;
+    virtual void OnUnitDestroyed(const Unit *unit) override;
+    virtual void OnBuildingConstructionComplete(const Unit *unit) override;
 
     MasterController controller;
     UnitGroup *Scouts;
     UnitGroup *Larva;
     UnitGroup *Attackers;
     UnitGroup *Workers;
-    sc2::Point2D enemyLoc;
-    sc2::Point2D startLoc;
-    sc2::Point2D mapCenter;
+    Point2D enemyLoc;
+    Point2D startLoc;
+    Point2D mapCenter;
 
   private:
-    sc2::Units constructedBuildings[4]{};
+    Units constructedBuildings[4]{};
     std::deque<std::pair<int, std::function<bool()>>> buildOrder;
 
-    void AssignWorkersToExtractor(const sc2::Unit *extractor);
+    void AssignWorkersToExtractor(const Unit *extractor);
     bool BuildDrone();
     bool BuildExtractor();
     bool BuildHatchery();
@@ -40,14 +43,14 @@ class BasicSc2Bot : public sc2::Agent {
     bool BuildSpawningPool();
     bool BuildZergling();
     void ExecuteBuildOrder();
-    sc2::Point2D FindExpansionLocation();
-    sc2::Point2D FindHatcheryPlacement(const sc2::Unit *mineral_field);
-    sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
+    Point2D FindExpansionLocation();
+    Point2D FindHatcheryPlacement(const Unit *mineral_field);
+    Point2D FindPlacementForBuilding(ABILITY_ID ability_type);
     void GetEnemyUnitLocations();
-    int GetBuildingIndex(sc2::UNIT_TYPEID type);
-    sc2::Units GetIdleLarva();
-    bool IsGeyser(const sc2::Unit &unit);
-    void OnBuildingDestruction(const sc2::Unit *unit);
+    int GetBuildingIndex(UNIT_TYPEID type);
+    Units GetIdleLarva();
+    bool IsGeyser(const Unit &unit);
+    void OnBuildingDestruction(const Unit *unit);
     bool ResearchMetabolicBoost();
     void tryInjection();
 };
