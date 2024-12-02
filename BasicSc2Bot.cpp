@@ -1,4 +1,5 @@
 #include "BasicSc2Bot.h"
+#include "cpp-sc2/include/sc2api/sc2_common.h"
 #include "cpp-sc2/include/sc2api/sc2_interfaces.h"
 #include "cpp-sc2/include/sc2api/sc2_typeenums.h"
 #include <cstddef>
@@ -169,7 +170,7 @@ void ScoutController::scoutFast(AllyUnit &unit) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART,
                                        fast_locations[unit.group->index]);
         } else {
-            scoutBase(unit);
+            unit.unitTask = TASK::SCOUT;
         }
     }
 };
@@ -183,6 +184,7 @@ void ScoutController::scoutFast(AllyUnit &unit) {
  */
 void ScoutController::underAttack(AllyUnit &unit) {
     onDeath(unit);
+    if(all_locations.empty()) { initializeAllLocations(); }
     bot.Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, all_locations[0]);
 };
 
@@ -201,8 +203,13 @@ void ScoutController::onDeath(AllyUnit &unit) {
     sc2::Point2D closestPoint;
     std::vector<sc2::Point2D> locations;
     if(unit.unitTask == TASK::FAST_SCOUT) {
+        if(fast_locations.empty()) { initializeFastLocations(); }
         locations = fast_locations;
-    } else if(unit.unitTask == TASK::SCOUT_ALL) {
+    } else if(unit.unitTask == TASK::SCOUT) {
+        if(base_locations.empty()) { initializeBaseLocations(); }
+        locations = base_locations;
+    } else {
+        if(all_locations.empty()) { initializeAllLocations(); }
         locations = all_locations;
     }
     for(const auto &location : locations) {
@@ -449,8 +456,10 @@ void AttackController::step(AllyUnit &unit) {
  * @param unit The attack unit under attack
  */
 void AttackController::underAttack(AllyUnit &unit) {
-    rallyMultiplier -= 0.01f;
-    rallyMultiplier = fmax(0.0f, rallyMultiplier);
+    // rallyMultiplier -= 0.01f;
+    // rallyMultiplier = fmax(0.0f, rallyMultiplier);
+    // bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
+    approachDistance += 1;
 };
 
 /**
@@ -464,11 +473,14 @@ void AttackController::onDeath(AllyUnit &unit) {};
 
 void AttackController::rally(AllyUnit &unit) {
     if(unit.unit != nullptr) {
-        if(this->bot.enemyLoc.x != 0 && this->bot.enemyLoc.y != 0) {
-            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, rallyPoint);
-            if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER
-               && DistanceSquared2D(unit.unit->pos, rallyPoint) < BASE_SIZE) {
-                isAttacking = true;
+        if(bot.enemyLoc.x != 0 && bot.enemyLoc.y != 0) {
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.enemyLoc);
+            if(DistanceSquared2D(unit.unit->pos, bot.enemyLoc)
+               < approachDistance * approachDistance) {
+                bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
+                if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER) {
+                    isAttacking = true;
+                }
             }
         } else {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
@@ -684,8 +696,6 @@ void MasterController::step() {
     for(auto &unitGroup : this->unitGroups) {
         switch(unitGroup.unitRole) {
         case ROLE::ATTACK:
-            attack_controller.rallyPoint
-              = bot.mapCenter + (bot.enemyLoc - bot.mapCenter) * attack_controller.rallyMultiplier;
             if(attack_controller.isAttacking) {
                 attack_controller.getMostDangerous();
                 unitGroup.unitTask = TASK::ATTACK;
@@ -1374,11 +1384,14 @@ bool BasicSc2Bot::BuildRoachWarren() {
  */
 bool BasicSc2Bot::ResearchMetabolicBoost() {
     const ObservationInterface *observation = Observation();
+    std::cout << "Trying to research metabolic boost\n";
     Units spawning_pool = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
     if(!spawning_pool.empty() && observation->GetMinerals() >= 100
        && observation->GetVespene() >= 100) {
         Actions()->UnitCommand(spawning_pool[0], ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
-        return true;
+        return !spawning_pool[0]->orders.empty()
+               && spawning_pool[0]->orders[0].ability_id
+                    == ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST;
     }
     return false;
 }

@@ -110,8 +110,7 @@ struct AttackController : public UnitController {
     const sc2::Unit *most_dangerous_all = nullptr;
     const sc2::Unit *most_dangerous_ground = nullptr;
     bool isAttacking = false;
-    sc2::Point2D rallyPoint;
-    float rallyMultiplier = 0.70f;
+    float approachDistance = 25.0f;
 };
 
 struct MasterController {
