@@ -1,6 +1,11 @@
 #ifndef ENUMS_H
 #define ENUMS_H
 
+#define EPSILON 0.000001
+#define BASE_SIZE 15.0f
+#define ENEMY_EPSILON 1.0f
+#define CLUSTER_DISTANCE 20.0f
+
 enum class ROLE {
     SCOUT,
     ATTACK,

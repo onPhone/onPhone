@@ -2,7 +2,7 @@
 #define UNITGROUP_H
 
 #include "sc2-includes.h"
-#include "enums.h"
+#include "enums_constants.h"
 
 struct AllyUnit;
 

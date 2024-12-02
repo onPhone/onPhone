@@ -1,7 +1,7 @@
 #ifndef ALLYUNIT_H
 #define ALLYUNIT_H
 
-#include "enums.h"
+#include "enums_constants.h"
 #include "sc2-includes.h"
 
 struct UnitGroup;
