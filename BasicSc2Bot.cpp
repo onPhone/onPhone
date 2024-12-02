@@ -69,7 +69,7 @@ bool AllyUnit::underAttack() const {
     return this->unit->health < priorHealth;
 };
 
-UnitController::UnitController(BasicSc2Bot &bot) : bot(bot){};
+UnitController::UnitController(BasicSc2Bot &bot) : bot(bot) {};
 
 /**
  * @brief Handles an ally unit being under attack.
@@ -97,7 +97,7 @@ void UnitController::base_step(AllyUnit &unit) {
     }
 };
 
-ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot){};
+ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the scout unit.
@@ -180,7 +180,7 @@ void ScoutController::scoutFast(AllyUnit &unit) {
  */
 void ScoutController::underAttack(AllyUnit &unit) {
     onDeath(unit);
-    bot.Actions()->UnitCommand(unit.unit, sc2::ABILITY_ID::SMART, all_locations[0]);
+    bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, all_locations[0]);
 };
 
 /**
@@ -195,8 +195,8 @@ void ScoutController::onDeath(AllyUnit &unit) {
     std::cout << "Scout died at (" << unit.priorPos.x << ", " << unit.priorPos.y << ")\n";
     Point2D deathPos = unit.priorPos;
     float minDist = std::numeric_limits<float>::max();
-    sc2::Point2D closestPoint;
-    std::vector<sc2::Point2D> locations;
+    Point2D closestPoint;
+    std::vector<Point2D> locations;
     if(unit.unitTask == TASK::FAST_SCOUT) {
         locations = fast_locations;
     } else if(unit.unitTask == TASK::SCOUT_ALL) {
@@ -284,7 +284,7 @@ void ScoutController::initializeBaseLocations() {
     }
 }
 
-WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
+WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the worker unit.
@@ -421,7 +421,7 @@ void WorkerController::underAttack(AllyUnit &unit) {};
  */
 void WorkerController::onDeath(AllyUnit &unit) {};
 
-AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot){};
+AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the given ally attack unit.
@@ -621,15 +621,14 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
     std::vector<Point3D> enemy_unit_locations;
 
     // Get all enemy units that are either visible or in snapshot
-    Units enemy_units
-      = observation->GetUnits(sc2::Unit::Alliance::Enemy, [](const sc2::Unit &unit) {
-            return unit.unit_type.ToType() != sc2::UNIT_TYPEID::INVALID &&  // Valid unit
-                   (unit.display_type == sc2::Unit::DisplayType::Visible || // Visible or
-                    unit.display_type == sc2::Unit::DisplayType::Snapshot)
-                   && (unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
-                       || unit.unit_type == UNIT_TYPEID::PROTOSS_NEXUS
-                       || unit.unit_type == UNIT_TYPEID::ZERG_HATCHERY);
-        });
+    Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
+        return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
+               (unit.display_type == Unit::DisplayType::Visible || // Visible or
+                unit.display_type == Unit::DisplayType::Snapshot)
+               && (unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
+                   || unit.unit_type == UNIT_TYPEID::PROTOSS_NEXUS
+                   || unit.unit_type == UNIT_TYPEID::ZERG_HATCHERY);
+    });
     if(!enemy_units.empty()) {
         enemyLoc = enemy_units[0]->pos;
         std::cout << "Enemy at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
@@ -643,7 +642,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
 }
 
 MasterController::MasterController(BasicSc2Bot &bot)
-    : bot(bot), worker_controller(bot), scout_controller(bot), attack_controller(bot){};
+    : bot(bot), worker_controller(bot), scout_controller(bot), attack_controller(bot) {};
 
 /**
  * @brief Adds a unit group to the master controller.
@@ -655,7 +654,7 @@ MasterController::MasterController(BasicSc2Bot &bot)
 void MasterController::addUnitGroup(UnitGroup unitGroup) { unitGroups.push_back(unitGroup); }
 
 UnitGroup::UnitGroup(ROLE unitRole, TASK unitTask = TASK::UNSET, int sizeTrigger = 0)
-    : unitRole(unitRole), unitTask(unitTask), sizeTrigger(sizeTrigger){};
+    : unitRole(unitRole), unitTask(unitTask), sizeTrigger(sizeTrigger) {};
 
 /**
  * @brief Adds a unit to the unit group.
@@ -717,7 +716,7 @@ void MasterController::step() {
     }
 };
 
-BasicSc2Bot::BasicSc2Bot() : controller(*this){};
+BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
 
 /**
  * @brief Checks if the bot has enough supply to build a unit.
@@ -793,6 +792,37 @@ bool BasicSc2Bot::ResearchUpgrade(ABILITY_ID research_ability, UNIT_TYPEID requi
 }
 
 /**
+ * @brief Identifies and prioritizes potential expansion locations for new hatcheries.
+ *
+ * Searches for mineral fields beyond the starting base, finds valid hatchery placement locations
+ * near them, and sorts these locations by distance from the starting position.
+ */
+void BasicSc2Bot::InitializeExpansionLocations() {
+    const ObservationInterface *observation = Observation();
+    Units mineral_fields = observation->GetUnits(Unit::Alliance::Neutral, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD
+               || unit.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD750;
+    });
+
+    Point2D start_location = observation->GetStartLocation();
+    float min_distance_from_start = 32.0f;
+
+    for(const auto &mineral : mineral_fields) {
+        if(Distance2D(mineral->pos, start_location) > min_distance_from_start) {
+            Point2D location = FindHatcheryPlacement(mineral);
+            if(location.x != 0 && location.y != 0) {
+                possibleHatcheryLocations.push_back(location);
+            }
+        }
+    }
+
+    std::sort(possibleHatcheryLocations.begin(), possibleHatcheryLocations.end(),
+              [&start_location](const Point2D &a, const Point2D &b) {
+                  return Distance2D(a, start_location) < Distance2D(b, start_location);
+              });
+}
+
+/**
  * @brief Initializes the build order for the Zerg bot.
  *
  * This function is called at the start of the game and sets up the initial
@@ -808,6 +838,8 @@ void BasicSc2Bot::OnGameStart() {
     std::cout << "Start location: (" << startLoc.x << ", " << startLoc.y << ")\n";
     mapCenter = (gameInfo.playable_min + gameInfo.playable_max) * 0.5f;
     std::cout << "Map center: (" << mapCenter.x << ", " << mapCenter.y << ")\n";
+
+    InitializeExpansionLocations();
 
     this->controller.addUnitGroup(UnitGroup(ROLE::INTERMEDIATE));
     std::size_t enemyLocationCount = Observation()->GetGameInfo().enemy_start_locations.size();
@@ -828,11 +860,11 @@ void BasicSc2Bot::OnGameStart() {
     buildOrder.push_back({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
     buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
     buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+    buildOrder.push_back({17, std::bind(&BasicSc2Bot::BuildQueen, this)});
     buildOrder.push_back({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
     for(int i = 0; i < 3; ++i) {
         buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
-    buildOrder.push_back({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
     buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
     buildOrder.push_back({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
     buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
@@ -1233,7 +1265,7 @@ bool BasicSc2Bot::BuildSpawningPool() {
  * @return true if the given type is a geyser
  */
 bool BasicSc2Bot::IsGeyser(const Unit &unit) {
-    sc2::UNIT_TYPEID type_ = unit.unit_type.ToType();
+    UNIT_TYPEID type_ = unit.unit_type.ToType();
     return type_ == UNIT_TYPEID::NEUTRAL_VESPENEGEYSER
            || type_ == UNIT_TYPEID::NEUTRAL_PROTOSSVESPENEGEYSER
            || type_ == UNIT_TYPEID::NEUTRAL_SPACEPLATFORMGEYSER
@@ -1357,94 +1389,47 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
 }
 
 /**
- * @brief Finds a suitable location for expanding the base.
+ * @brief Finds a suitable location for a new Hatchery expansion.
  *
- * This function searches for mineral fields that are not too close to the
- * starting location and checks if there's enough space to build a Hatchery
- * nearby. It avoids locations where a Hatchery already exists.
+ * Checks predefined expansion locations and returns the first one that doesn't
+ * have an existing Hatchery within a specified radius.
  *
- * @return Point2D The coordinates where a new Hatchery can be placed for
- * expansion. Returns (0, 0) if no suitable location is found.
+ * @return Point2D Coordinates for new Hatchery placement, (0, 0) if no valid location found.
  */
 Point2D BasicSc2Bot::FindExpansionLocation() {
-    const ObservationInterface *observation = Observation();
-    Units mineral_fields = observation->GetUnits();
-
-    Point2D start_location = observation->GetStartLocation();
-    float closest_distance = std::numeric_limits<float>::max();
-    Point2D closest_location;
-
-    // Minimum distance from starting location for new mineral field
-    float min_distance_from_start = 32.0f;
-    // Search radius around new mineral field for existing Hatcheries
     float existing_hatchery_search_radius = 14.0f;
+    for(const auto &location : possibleHatcheryLocations) {
+        Units nearby_hatcheries = Observation()->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
+            return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY
+                   && Distance2D(u.pos, location) < existing_hatchery_search_radius;
+        });
 
-    for(const auto &unit : mineral_fields) {
-        if(unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD
-           && unit->unit_type != UNIT_TYPEID::NEUTRAL_MINERALFIELD750) {
-            continue;
-        }
-
-        float distance = Distance2D(unit->pos, start_location);
-
-        if(distance < closest_distance && distance > min_distance_from_start) {
-            Units nearby_units = observation->GetUnits(Unit::Alliance::Self, [&](const Unit &u) {
-                return u.unit_type == UNIT_TYPEID::ZERG_HATCHERY
-                       && Distance2D(u.pos, unit->pos) < existing_hatchery_search_radius;
-            });
-
-            if(nearby_units.empty()) {
-                Point2D build_location = FindHatcheryPlacement(unit);
-                if(build_location.x != 0 && build_location.y != 0) {
-                    closest_distance = distance;
-                    closest_location = build_location;
-                }
-            }
-        }
+        if(nearby_hatcheries.empty()) { return location; }
     }
-    return closest_location;
+    return Point2D(0, 0);
 }
 
 /**
- * @brief Finds a suitable placement for a Hatchery near a mineral field.
+ * @brief Finds a suitable placement for a Hatchery at a fixed distance from a mineral field.
  *
- * This function searches for a suitable location to place a Hatchery near a
- * mineral field. It checks if the location is valid for building a Hatchery
- * and returns the coordinates if a suitable location is found.
+ * Searches in 4 cardinal directions at increasing distances from the mineral field,
+ * checking if each location is valid for Hatchery placement.
  *
  * @param mineral_field Pointer to the mineral field unit.
- * @return Point2D The coordinates where the Hatchery can be placed.
- *         Returns (0, 0) if no suitable location is found.
+ * @return Point2D The coordinates where the Hatchery can be placed, or (0, 0) if no valid location
+ * found.
  */
 Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
-    for(float curr_dx = 0; curr_dx <= 10; curr_dx += 1.0f) {
-        for(float curr_dy = 0; curr_dy <= 10; curr_dy += 1.0f) {
-            Point2D build_location(mineral_field->pos.x + curr_dx, mineral_field->pos.y + curr_dy);
+    const float dx[] = {0, 1, 0, -1};
+    const float dy[] = {1, 0, -1, 0};
+    float x = mineral_field->pos.x;
+    float y = mineral_field->pos.y;
+
+    for(float radius = 4; radius <= 10; radius += 1.0f) {
+        for(int dir = 0; dir < 4; ++dir) {
+            Point2D build_location(x + dx[dir] * radius, y + dy[dir] * radius);
             if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
                 return build_location;
-            }
-            if(curr_dy > 0) {
-                build_location
-                  = Point2D(mineral_field->pos.x + curr_dx, mineral_field->pos.y - curr_dy);
-                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
-                    return build_location;
-                }
-            }
-        }
-        if(curr_dx > 0) {
-            for(float curr_dy = 0; curr_dy <= 10; curr_dy += 1.0f) {
-                Point2D build_location(mineral_field->pos.x - curr_dx,
-                                       mineral_field->pos.y + curr_dy);
-                if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
-                    return build_location;
-                }
-                if(curr_dy > 0) {
-                    build_location
-                      = Point2D(mineral_field->pos.x - curr_dx, mineral_field->pos.y - curr_dy);
-                    if(Query()->Placement(ABILITY_ID::BUILD_HATCHERY, build_location)) {
-                        return build_location;
-                    }
-                }
             }
         }
     }
@@ -1462,13 +1447,19 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     Point2D hatchery_location
       = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
 
-    float radius = 15.0f;
-    for(float dx = -radius; dx <= radius; dx += 1.0f) {
-        for(float dy = -radius; dy <= radius; dy += 1.0f) {
-            Point2D buildLocation = Point2D(hatchery_location.x + dx, hatchery_location.y + dy);
-            if(Query()->Placement(ability_type, buildLocation)) { return buildLocation; }
+    const int dx[] = {1, 0, -1, 0};
+    const int dy[] = {0, 1, 0, -1};
+    Point2D current = hatchery_location;
+
+    for(int radius = 1; radius <= 15; ++radius) {
+        for(int dir = 0; dir < 4; dir++) {
+            for(int step = 0; step < radius; ++step) {
+                if(Query()->Placement(ability_type, current)) { return current; }
+                current = Point2D(current.x + dx[dir], current.y + dy[dir]);
+            }
         }
     }
+
     return Point2D(0, 0);
 }
 

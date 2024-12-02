@@ -149,6 +149,7 @@ class BasicSc2Bot : public sc2::Agent {
 
     sc2::Units constructedBuildings[4]{};
     std::deque<std::pair<int, std::function<bool()>>> buildOrder;
+    std::vector<sc2::Point2D> possibleHatcheryLocations;
 
     void ExecuteBuildOrder();
     bool BuildDrone();
@@ -171,6 +172,7 @@ class BasicSc2Bot : public sc2::Agent {
     sc2::Point2D FindPlacementForBuilding(sc2::ABILITY_ID ability_type);
     void OnBuildingDestruction(const sc2::Unit *unit);
     bool IsGeyser(const sc2::Unit &unit);
+    void InitializeExpansionLocations();
 };
 
 #endif
