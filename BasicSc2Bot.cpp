@@ -36,7 +36,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
     });
     if(!enemy_units.empty()) {
         enemyLoc = enemy_units[0]->pos;
-        std::cout << "Enemy at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+        std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
         this->controller.scout_controller.foundEnemyLocation.x = 0;
         this->controller.scout_controller.foundEnemyLocation.y = 0;
     }
@@ -167,6 +167,7 @@ void BasicSc2Bot::tryInjection() {
 
             if(closest_queen) {
                 Actions()->UnitCommand(closest_queen, ABILITY_ID::EFFECT_INJECTLARVA, hatchery);
+                std::cout << "Command Sent: Injecting larvae into hatchery\n";
             }
         }
     }
@@ -347,6 +348,7 @@ bool BasicSc2Bot::BuildDrone() {
     }
 
     Actions()->UnitCommand(larva.front(), ABILITY_ID::TRAIN_DRONE);
+    std::cout << "Command Sent: Build Drone\n";
     return true;
 }
 
@@ -373,6 +375,7 @@ bool BasicSc2Bot::BuildOverlord() {
     }
 
     Actions()->UnitCommand(larva.front(), ABILITY_ID::TRAIN_OVERLORD);
+    std::cout << "Command Sent: Build Overlord\n";
     return true;
 }
 
@@ -406,6 +409,7 @@ bool BasicSc2Bot::BuildZergling() {
     }
 
     Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ZERGLING);
+    std::cout << "Command Sent: Build Zergling\n";
     return true;
 }
 
@@ -435,6 +439,7 @@ bool BasicSc2Bot::BuildQueen() {
     if(hatchery.empty() || spawning_pool.empty()) { return false; }
 
     Actions()->UnitCommand(hatchery[0], ABILITY_ID::TRAIN_QUEEN);
+    std::cout << "Command Sent: Build Queen\n";
     return true;
 }
 
@@ -470,6 +475,7 @@ bool BasicSc2Bot::BuildRoach() {
     if(roach_warren.empty()) return false;
 
     Actions()->UnitCommand(larva[0], ABILITY_ID::TRAIN_ROACH);
+    std::cout << "Command Sent: Build Roach\n";
     return true;
 }
 
@@ -501,6 +507,7 @@ bool BasicSc2Bot::BuildRavager() {
     if(roaches.empty()) return false;
 
     Actions()->UnitCommand(roaches[0], ABILITY_ID::MORPH_RAVAGER);
+    std::cout << "Command Sent: Build Ravager\n";
     return true;
 }
 
@@ -533,6 +540,8 @@ bool BasicSc2Bot::BuildSpawningPool() {
 
     drone->unitTask = TASK::UNSET;
     Actions()->UnitCommand(drone->unit, ABILITY_ID::BUILD_SPAWNINGPOOL, buildLocation);
+    std::cout << "Command Sent: Build Spawning Pool at (" << buildLocation.x << ", "
+              << buildLocation.y << ")\n";
     return true;
 }
 
@@ -585,6 +594,7 @@ bool BasicSc2Bot::BuildExtractor() {
         if(Distance2D(geyser->pos, startLocation) < BASE_SIZE) {
             drone->unitTask = TASK::UNSET;
             Actions()->UnitCommand(drone->unit, ABILITY_ID::BUILD_EXTRACTOR, geyser);
+            std::cout << "Command Sent: Build Extractor\n";
             return true;
         }
     }
@@ -673,6 +683,7 @@ bool BasicSc2Bot::BuildRoachWarren() {
 
     drone->unitTask = TASK::UNSET;
     Actions()->UnitCommand(drone->unit, ABILITY_ID::BUILD_ROACHWARREN, buildLocation);
+    std::cout << "Command Sent: Build Roach Warren\n";
     return true;
 }
 
@@ -700,6 +711,7 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
 
     const Unit *pool = spawning_pool[0];
     Actions()->UnitCommand(pool, ABILITY_ID::RESEARCH_ZERGLINGMETABOLICBOOST);
+    std::cout << "Command Sent: Research Metabolic Boost\n";
     return false;
 }
 
