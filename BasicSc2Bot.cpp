@@ -1437,6 +1437,13 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
     return Point2D(0, 0);
 }
 
+/**
+ * @brief Finds a suitable location to place a Hatchery near a mineral field.
+ *
+ * @param mineral_field Pointer to a mineral field Unit to build the Hatchery near
+ * @return Point2D The coordinates where the Hatchery can be placed, or (0,0) if no valid location
+ * found
+ */
 Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
     const Point2D mineral_pos = mineral_field->pos;
     const Point2D likely_offsets[] = {Point2D(7, 0), Point2D(-7, 0), Point2D(0, 7), Point2D(0, -7)};
@@ -1448,7 +1455,6 @@ Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
 
     return Point2D(0, 0);
 }
-
 /**
  * @brief Finds a suitable placement for a building near the main Hatchery.
  *
