@@ -59,16 +59,14 @@ void AttackController::rally(AllyUnit &unit) {
 
 void AttackController::attack(AllyUnit &unit) {
     if(unit.unit != nullptr) {
-        if(canAttackAir(unit) && most_dangerous_all != nullptr) {
+        if(most_dangerous_ground != nullptr) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK,
-                                       most_dangerous_all->pos);
-            if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER) {
+                                       most_dangerous_ground->pos);
+            if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER
+               && most_dangerous_all != nullptr) {
                 bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::EFFECT_CORROSIVEBILE,
                                            most_dangerous_all->pos);
             }
-        } else if(!canAttackAir(unit) && most_dangerous_ground != nullptr) {
-            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK,
-                                       most_dangerous_ground->pos);
         } else {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.enemyLoc);
         }
@@ -119,25 +117,4 @@ void AttackController::getMostDangerous() {
             }
         }
     }
-}
-
-/**
- * @brief Determines if a unit can attack air units.
- *
- * This function checks if the given unit is one of the Zerg units
- * (Queen or Ravager) that can attack air units.
- *
- * @param unit The unit to check
- * @return true if the unit can attack air units, false otherwise
- */
-bool AttackController::canAttackAir(AllyUnit &unit) {
-    if(unit.unit != nullptr) {
-        switch(unit.unit->unit_type.ToType()) {
-        case UNIT_TYPEID::ZERG_QUEEN: return true;
-        case UNIT_TYPEID::ZERG_RAVAGER: return true;
-        case UNIT_TYPEID::ZERG_ROACH: return true;
-        default: return false;
-        }
-    }
-    return false;
 }
