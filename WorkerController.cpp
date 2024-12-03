@@ -1,3 +1,4 @@
+#include "AttackController.h"
 #include "BasicSc2Bot.h"
 
 WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
@@ -14,7 +15,7 @@ void WorkerController::step(AllyUnit &unit) {
     if(unit.unit != nullptr) {
         if(unit.unit->unit_type.ToType() == sc2::UNIT_TYPEID::ZERG_QUEEN && most_dangerous_all) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK, most_dangerous_all);
-        } else if(most_dangerous_ground) {
+        } else if(bot.controller.attack_controller.isAttacking && most_dangerous_ground) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK, most_dangerous_ground);
         } else {
             switch(unit.unitTask) {
