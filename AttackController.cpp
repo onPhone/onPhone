@@ -1,6 +1,6 @@
 #include "BasicSc2Bot.h"
 
-AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot) {};
+AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot){};
 
 /**
  * @brief Steps the given ally attack unit.
@@ -26,10 +26,9 @@ void AttackController::step(AllyUnit &unit) {
  * @param unit The attack unit under attack
  */
 void AttackController::underAttack(AllyUnit &unit) {
-    // rallyMultiplier -= 0.01f;
-    // rallyMultiplier = fmax(0.0f, rallyMultiplier);
-    // bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
-    approachDistance += 1;
+    if(unit.unit != nullptr) {
+        approachDistance = fmax(approachDistance + 3, Distance2D(unit.unit->pos, bot.enemyLoc) + 3);
+    }
 };
 
 /**

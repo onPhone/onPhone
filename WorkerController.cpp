@@ -12,16 +12,17 @@ WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
  */
 void WorkerController::step(AllyUnit &unit) {
     if(unit.unit != nullptr) {
-        if(unit.unit->unit_type.ToType() == sc2::UNIT_TYPEID::ZERG_QUEEN) {
+        if(unit.unit->unit_type.ToType() == sc2::UNIT_TYPEID::ZERG_QUEEN && most_dangerous_all) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK, most_dangerous_all);
-        } else {
+        } else if(most_dangerous_ground) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK, most_dangerous_ground);
+        } else {
+            switch(unit.unitTask) {
+            case TASK::EXTRACT: extract(unit); break;
+            case TASK::MINE: mine(unit); break;
+            default: break;
+            }
         }
-    }
-    switch(unit.unitTask) {
-    case TASK::EXTRACT: extract(unit); break;
-    case TASK::MINE: mine(unit); break;
-    default: break;
     }
 };
 

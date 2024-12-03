@@ -63,7 +63,8 @@ void BasicSc2Bot::OnGameStart() {
     std::cout << "Start location: (" << startLoc.x << ", " << startLoc.y << ")\n";
     mapCenter = (gameInfo.playable_min + gameInfo.playable_max) * 0.5f;
     std::cout << "Map center: (" << mapCenter.x << ", " << mapCenter.y << ")\n";
-
+    top = startLoc.y > mapCenter.y;
+    right = startLoc.x > mapCenter.x;
     std::size_t enemyLocationCount = Observation()->GetGameInfo().enemy_start_locations.size();
     if(enemyLocationCount == 1) {
         enemyLoc = Observation()->GetGameInfo().enemy_start_locations[0];
@@ -156,7 +157,7 @@ void BasicSc2Bot::tryInjection() {
 
             for(const auto &queen : queens) {
                 float distance = DistanceSquared2D(queen->pos, hatchery->pos);
-                if(distance < closest_distance) {
+                if(distance < closest_distance && queen->orders.empty()) {
                     closest_distance = distance;
                     closest_queen = queen;
                 }
@@ -750,8 +751,9 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
         return Distance2D(a->pos, startLocation) < Distance2D(b->pos, startLocation);
     });
 
-    auto it = std::find_if(minerals.begin(), minerals.end(),
-                           [startLocation](const Unit *m) { return Distance2D(m->pos, startLocation) > 10.0f; });
+    auto it = std::find_if(minerals.begin(), minerals.end(), [startLocation](const Unit *m) {
+        return Distance2D(m->pos, startLocation) > 10.0f;
+    });
 
     while(it != minerals.end()) {
         const Unit *mineral = *it;
@@ -797,11 +799,22 @@ Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
  *         Returns (0, 0) if no suitable location is found.
  */
 Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
-    const Point2D hatchery_location
-      = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
-    static const int dx[] = {1, 0, -1, 0};
-    static const int dy[] = {0, 1, 0, -1};
-    Point2D current = hatchery_location;
+    static int dx[] = {1, 0, -1, 0};
+    static int dy[] = {0, 1, 0, -1};
+    if(right) {
+        dx[0] = -1;
+        dx[2] = 1;
+    }
+    if(top) {
+        dy[1] = -1;
+        dy[3] = 1;
+    }
+    Point2D current;
+    if(constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
+        current = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
+    } else {
+        current = Observation()->GetStartLocation();
+    }
 
     for(int radius = 1; radius <= 15; ++radius) {
         for(int dir = 0; dir < 4; ++dir) {
