@@ -12,7 +12,6 @@ struct AttackController : public UnitController {
     void rally(AllyUnit &unit);
     void attack(AllyUnit &unit);
     void getMostDangerous();
-    bool canAttackAir(AllyUnit &unit);
     const sc2::Unit *most_dangerous_all = nullptr;
     const sc2::Unit *most_dangerous_ground = nullptr;
     bool isAttacking = false;
