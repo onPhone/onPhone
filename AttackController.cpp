@@ -27,7 +27,7 @@ void AttackController::step(AllyUnit &unit) {
  */
 void AttackController::underAttack(AllyUnit &unit) {
     if(unit.unit != nullptr) {
-        approachDistance = fmax(approachDistance + 3, Distance2D(unit.unit->pos, bot.enemyLoc) + 3);
+        approachDistance = fmax(approachDistance + 1, Distance2D(unit.unit->pos, bot.enemyLoc) + 1);
     }
 };
 
