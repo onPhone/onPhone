@@ -13,6 +13,7 @@ class BasicSc2Bot : public Agent {
   public:
     BasicSc2Bot();
     virtual void OnGameStart() override;
+    virtual void OnGameEnd() final;
     virtual void OnStep() override;
     virtual void OnUnitCreated(const Unit *unit) override;
     virtual void OnUnitDestroyed(const Unit *unit) override;

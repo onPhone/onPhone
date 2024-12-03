@@ -47,7 +47,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
     }
 }
 
-BasicSc2Bot::BasicSc2Bot() : controller(*this){};
+BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
 
 /**
  * @brief Initializes the build order for the Zerg bot.
@@ -864,4 +864,19 @@ int BasicSc2Bot::GetBuildingIndex(UNIT_TYPEID type) {
     case UNIT_TYPEID::ZERG_ROACHWARREN: return 3;
     default: return -1; // Invalid building type
     }
+}
+
+void BasicSc2Bot::OnGameEnd() {
+    const ObservationInterface *observation = Observation();
+    std::cout << "Game ended after: " << observation->GetGameLoop() << " loops " << std::endl;
+    std::cout << "Total game time: " << observation->GetGameLoop() / 22.4 << " seconds"
+              << std::endl;
+
+    const Score &score = observation->GetScore();
+    const std::vector<PlayerResult> result = observation->GetResults();
+    std::cout << "Result: "
+              << (result[0].result == GameResult::Win    ? "Won"
+                  : result[0].result == GameResult::Loss ? "Lost"
+                                                         : "Tied")
+              << std::endl;
 }

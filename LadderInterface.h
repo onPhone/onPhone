@@ -104,7 +104,7 @@ static void RunBot(int argc, char *argv[], sc2::Agent *Agent, sc2::Race race) {
           {CreateParticipant(race, Agent),
            CreateComputer(Options.ComputerRace, Options.ComputerDifficulty)});
         coordinator.LoadSettings(1, argv);
-        coordinator.SetRealtime(true);
+        // coordinator.SetRealtime(true);
         coordinator.LaunchStarcraft();
         coordinator.StartGame(Options.Map);
     } else {
