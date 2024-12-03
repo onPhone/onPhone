@@ -78,29 +78,13 @@ void ScoutController::scoutFast(AllyUnit &unit) {
 /**
  * @brief Handles the scout unit being under attack.
  *
- * This function handles the scout unit being under attack
+ * This function handles the scout unit being under attack by
+ * updating the found enemy location.
  *
  * @param unit The scout unit under attack
  */
 void ScoutController::underAttack(AllyUnit &unit) {
-    onDeath(unit);
-    if(all_locations.empty()) { initializeAllLocations(); }
-    if(unit.unit != nullptr) {
-        bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, all_locations[0]);
-    }
-};
-
-/**
- * @brief Handles the scout unit dying.
- *
- * This function handles the scout unit dying by
- * and updating the found enemy location if the scout unit dies.
- *
- * @param unit The scout unit that died
- */
-void ScoutController::onDeath(AllyUnit &unit) {
-    std::cout << "Scout died at (" << unit.priorPos.x << ", " << unit.priorPos.y << ")\n";
-    Point2D deathPos = unit.priorPos;
+    Point2D priorPos = unit.priorPos;
     float minDist = std::numeric_limits<float>::max();
     Point2D closestPoint;
     std::vector<Point2D> locations;
@@ -115,7 +99,7 @@ void ScoutController::onDeath(AllyUnit &unit) {
         locations = all_locations;
     }
     for(const auto &location : locations) {
-        float dist = DistanceSquared2D(location, deathPos);
+        float dist = DistanceSquared2D(location, priorPos);
         if(dist < minDist) {
             minDist = dist;
             closestPoint = location;
@@ -123,11 +107,30 @@ void ScoutController::onDeath(AllyUnit &unit) {
     }
     if(this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
         this->foundEnemyLocation = closestPoint;
-        std::cout << "Enemy base found at (VIA DEATH) (" << foundEnemyLocation.x << ", "
+        std::cout << "Enemy base found at (VIA BEING ATTACKED) (" << foundEnemyLocation.x << ", "
                   << foundEnemyLocation.y << ")\n";
+    }
+    if(all_locations.empty()) { initializeAllLocations(); }
+    if(unit.unit != nullptr) {
+        bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, all_locations[0]);
     }
 };
 
+/**
+ * @brief Handles the scout unit dying.
+ *
+ * This function handles the scout unit dying
+ *
+ * @param unit The scout unit that died
+ */
+void ScoutController::onDeath(AllyUnit &unit) {};
+
+/**
+ * @brief Initializes the fast scout locations.
+ *
+ * This function initializes the fast scout locations by
+ * identifying the enemy base location and other possible base locations.
+ */
 void ScoutController::initializeFastLocations() {
     const auto &gameInfo = bot.Observation()->GetGameInfo();
     std::cout << "Enemy Base possible locations:\n";
@@ -137,6 +140,12 @@ void ScoutController::initializeFastLocations() {
     }
 }
 
+/**
+ * @brief Initializes all possible locations for scouting.
+ *
+ * This function initializes all possible locations for scouting by
+ * identifying the reachable waypoints on the map.
+ */
 void ScoutController::initializeAllLocations() {
     const GameInfo &game_info = bot.Observation()->GetGameInfo();
     all_locations.push_back(bot.startLoc);
@@ -155,6 +164,12 @@ void ScoutController::initializeAllLocations() {
     }
 };
 
+/**
+ * @brief Initializes the base locations for scouting.
+ *
+ * This function initializes the base locations for scouting by
+ * identifying the enemy base location and other possible base locations.
+ */
 void ScoutController::initializeBaseLocations() {
     Point2D enemyLocation = bot.enemyLoc;
     base_locations.push_back(enemyLocation);

@@ -5,5 +5,5 @@ msbuild .\BasicSc2Bot.sln
 cd bin
 set /p race="Enter race (terran, protoss, zerg): "
 set /p difficulty="Enter difficulty (VeryEasy, Easy, Medium, Hard, VeryHard): "
-.\BasicSc2Bot.exe -c -a %race% -d %difficulty% -m CactusValleyLE.SC2Map > ../../log.txt
+.\BasicSc2Bot.exe -c -a %race% -d %difficulty% -m CactusValleyLE.SC2Map
 cd ../..

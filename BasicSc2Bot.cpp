@@ -34,8 +34,10 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
                    || unit.unit_type == UNIT_TYPEID::ZERG_HATCHERY);
     });
     if(!enemy_units.empty()) {
-        enemyLoc = enemy_units[0]->pos;
-        std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+        if (enemyLoc != enemy_units[0]->pos) {
+            enemyLoc = enemy_units[0]->pos;
+            std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+        }
         this->controller.scout_controller.foundEnemyLocation.x = 0;
         this->controller.scout_controller.foundEnemyLocation.y = 0;
     }
