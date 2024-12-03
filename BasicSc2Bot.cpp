@@ -661,7 +661,8 @@ bool BasicSc2Bot::BuildHatchery() {
 
     drone->unitTask = TASK::UNSET;
     Actions()->UnitCommand(drone->unit, ABILITY_ID::BUILD_HATCHERY, buildLocation);
-    std::cout << "Hatchery built at: " << buildLocation.x << ", " << buildLocation.y << std::endl;
+    std::cout << "Sent Command: Build Hatchery at (" << buildLocation.x << ", " << buildLocation.y
+              << ")\n";
     return true;
 }
 

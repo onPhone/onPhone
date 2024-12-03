@@ -150,8 +150,6 @@ void ScoutController::initializeAllLocations() {
     const GameInfo &game_info = bot.Observation()->GetGameInfo();
     all_locations.push_back(bot.startLoc);
     Point2D map_center = (game_info.playable_min + game_info.playable_max) * 0.5f;
-    std::cout << game_info.playable_min.x << " " << game_info.playable_min.y << "\n";
-    std::cout << game_info.playable_max.x << " " << game_info.playable_max.y << "\n";
     const float step_size = BASE_SIZE; // Distance between waypoints
     for(float x = game_info.playable_min.x; x < game_info.playable_max.x; x += step_size) {
         for(float y = game_info.playable_min.y; y < game_info.playable_max.y; y += step_size) {
@@ -203,9 +201,4 @@ void ScoutController::initializeBaseLocations() {
               [&enemyLocation](const Point2D &a, const Point2D &b) {
                   return DistanceSquared2D(a, enemyLocation) < DistanceSquared2D(b, enemyLocation);
               });
-
-    std::cout << "Identified base locations:\n";
-    for(const auto &location : base_locations) {
-        std::cout << "Base at: (" << location.x << ", " << location.y << ")\n";
-    }
 }
