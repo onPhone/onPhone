@@ -9,7 +9,7 @@ echo "" >> $output_file
 
 # Arrays of test parameters
 races=("terran" "protoss" "zerg")
-difficulties=("Hard" "Very Hard")
+difficulties=("Hard" "VeryHard")
 maps=("CactusValleyLE" "BelShirVestigeLE" "ProximaStationLE")
 
 # Initialize counters
@@ -53,7 +53,7 @@ for race in "${races[@]}"; do
 
             case $difficulty in
                 "Hard") ((total_by_difficulty_hard++));;
-                "Very Hard") ((total_by_difficulty_veryhard++));;
+                "VeryHard") ((total_by_difficulty_veryhard++));;
             esac
 
             case $map in
@@ -71,7 +71,7 @@ for race in "${races[@]}"; do
 
                 case $difficulty in
                     "Hard") ((wins_by_difficulty_hard++));;
-                    "Very Hard") ((wins_by_difficulty_veryhard++));;
+                    "VeryHard") ((wins_by_difficulty_veryhard++));;
                 esac
 
                 case $map in
@@ -109,7 +109,7 @@ echo "==================" >> $output_file
 win_rate_hard=$(bc <<< "scale=2; $wins_by_difficulty_hard*100/$total_by_difficulty_hard")
 win_rate_veryhard=$(bc <<< "scale=2; $wins_by_difficulty_veryhard*100/$total_by_difficulty_veryhard")
 echo "Hard: $win_rate_hard%" >> $output_file
-echo "Very Hard: $win_rate_veryhard%" >> $output_file
+echo "VeryHard: $win_rate_veryhard%" >> $output_file
 
 echo -e "\nWin Rates by Map:" >> $output_file
 echo "==================" >> $output_file
