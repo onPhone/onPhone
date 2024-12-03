@@ -15,7 +15,7 @@ struct AttackController : public UnitController {
     const sc2::Unit *most_dangerous_all = nullptr;
     const sc2::Unit *most_dangerous_ground = nullptr;
     bool isAttacking = false;
-    float approachDistance = 30.0f;
+    float approachDistance = 60.0f;
 };
 
 #endif // ATTACK_CONTROLLER_H

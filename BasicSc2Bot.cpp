@@ -1,4 +1,5 @@
 #include "BasicSc2Bot.h"
+#include "MasterController.h"
 
 #include <cstddef>
 #include <iostream>
@@ -59,6 +60,7 @@ void BasicSc2Bot::OnGameStart() {
     std::size_t enemyLocationCount = Observation()->GetGameInfo().enemy_start_locations.size();
     if(enemyLocationCount == 1) {
         enemyLoc = Observation()->GetGameInfo().enemy_start_locations[0];
+        this->controller.scout_controller.foundEnemyLocation = enemyLoc;
         enemyLocationCount = 0;
     }
     this->controller.addUnitGroup(UnitGroup(ROLE::INTERMEDIATE));

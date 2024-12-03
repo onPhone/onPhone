@@ -2,6 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: Output file for statistics
+
 @REM Find all files that already exist starting with test-result-x.txt and get the highest number and then add 1 for the new file name
 set /a file_number=1
 for /f "tokens=*" %%G in ('dir /b test-results-*.txt') do (
@@ -18,7 +19,7 @@ echo. >> %output_file%
 
 :: Arrays of test parameters
 set races=terran protoss zerg
-set difficulties=Hard "Very Hard"
+set difficulties=VeryHard Hard
 set maps=CactusValleyLE BelShirVestigeLE ProximaStationLE
 
 :: Initialize counters
@@ -60,7 +61,7 @@ for %%R in (%races%) do (
             if "%%R"=="zerg" set /a total_by_race_zerg+=1
 
             if "%%D"=="Hard" set /a total_by_difficulty_hard+=1
-            if "%%D"=="Very Hard" set /a total_by_difficulty_veryhard+=1
+            if "%%D"=="VeryHard" set /a total_by_difficulty_veryhard+=1
 
             if "%%M"=="CactusValleyLE" set /a total_by_map_cactus+=1
             if "%%M"=="BelShirVestigeLE" set /a total_by_map_belshir+=1
@@ -72,7 +73,7 @@ for %%R in (%races%) do (
                 if "%%R"=="zerg" set /a wins_by_race_zerg+=1
 
                 if "%%D"=="Hard" set /a wins_by_difficulty_hard+=1
-                if "%%D"=="Very Hard" set /a wins_by_difficulty_veryhard+=1
+                if "%%D"=="VeryHard" set /a wins_by_difficulty_veryhard+=1
 
                 if "%%M"=="CactusValleyLE" set /a wins_by_map_cactus+=1
                 if "%%M"=="BelShirVestigeLE" set /a wins_by_map_belshir+=1
