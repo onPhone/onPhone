@@ -183,6 +183,9 @@ void BasicSc2Bot::tryInjection() {
  * @param unit Pointer to the destroyed unit
  */
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
+    if (unit->alliance == Unit::Alliance::Enemy) {
+        return;
+    }
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING:
         buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
