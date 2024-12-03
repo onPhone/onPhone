@@ -27,6 +27,7 @@ void MasterController::step() {
                 unitGroup.unitTask = TASK::ATTACK;
             }
             break;
+        case ROLE::WORKER: worker_controller.getMostDangerous(); break;
         default: break;
         }
         std::vector<AllyUnit> new_units;

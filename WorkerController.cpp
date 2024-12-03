@@ -1,6 +1,6 @@
 #include "BasicSc2Bot.h"
 
-WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot) {};
+WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
 
 /**
  * @brief Steps the worker unit.
@@ -11,6 +11,13 @@ WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot) {};
  * @param unit The worker unit to step
  */
 void WorkerController::step(AllyUnit &unit) {
+    if(unit.unit != nullptr) {
+        if(unit.unit->unit_type.ToType() == sc2::UNIT_TYPEID::ZERG_QUEEN) {
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK, most_dangerous_all);
+        } else {
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK, most_dangerous_ground);
+        }
+    }
     switch(unit.unitTask) {
     case TASK::EXTRACT: extract(unit); break;
     case TASK::MINE: mine(unit); break;
@@ -136,3 +143,37 @@ void WorkerController::underAttack(AllyUnit &unit) {};
  * @param unit The worker unit that died
  */
 void WorkerController::onDeath(AllyUnit &unit) {};
+
+void WorkerController::getMostDangerous() {
+    most_dangerous_all = nullptr;
+    most_dangerous_ground = nullptr;
+    // currently attacks weakest enemy unit
+    const auto enemy_units = bot.Observation()->GetUnits(Unit::Alliance::Enemy);
+    const UnitTypes unit_data = bot.Observation()->GetUnitTypeData();
+    float max_danger_all = std::numeric_limits<float>::lowest();
+    float max_danger_ground = std::numeric_limits<float>::lowest();
+    for(const auto &unit : enemy_units) {
+        UnitTypeData current_unit_data
+          = unit_data.at(static_cast<uint32_t>(unit->unit_type.ToType()));
+        float unit_health = unit->health + unit->shield;
+        float unit_DPS;
+        if(current_unit_data.weapons.data() != nullptr) {
+            unit_DPS = current_unit_data.weapons.data()->damage_
+                       * current_unit_data.weapons.data()->attacks
+                       * current_unit_data.weapons.data()->speed;
+        } else {
+            unit_DPS = 0;
+        }
+        float unit_danger = unit_DPS / (unit_health); // prevent division by 0
+        if(DistanceSquared2D(unit->pos, bot.Observation()->GetStartLocation()) <= BASE_SIZE) {
+            if(unit_danger > max_danger_all) {
+                max_danger_all = unit_danger;
+                most_dangerous_all = unit;
+            }
+            if(!unit->is_flying && unit_danger > max_danger_ground) {
+                max_danger_ground = unit_danger;
+                most_dangerous_ground = unit;
+            }
+        }
+    }
+}

@@ -4,7 +4,6 @@
 #include <iostream>
 #include <limits>
 
-
 namespace std {
     template <> struct hash<UnitTypeID> {
         size_t operator()(const UnitTypeID &unit_type) const noexcept {
@@ -46,7 +45,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
     }
 }
 
-BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
+BasicSc2Bot::BasicSc2Bot() : controller(*this){};
 
 /**
  * @brief Initializes the build order for the Zerg bot.
@@ -121,8 +120,6 @@ void BasicSc2Bot::OnStep() {
     Debug()->SendDebug();
 }
 
-
-
 /**
  * @brief Tries to inject larvae into hatcheries using queens.
  *
@@ -185,28 +182,28 @@ void BasicSc2Bot::tryInjection() {
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_ZERGLING:
-        buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
         break;
     case UNIT_TYPEID::ZERG_ROACH:
-        buildOrder.push_front({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
         break;
     case UNIT_TYPEID::ZERG_RAVAGER:
-        buildOrder.push_front({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
         break;
     case UNIT_TYPEID::ZERG_QUEEN:
-        buildOrder.push_front({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildQueen, this)});
         break;
     case UNIT_TYPEID::ZERG_EXTRACTOR:
         OnBuildingDestruction(unit);
-        buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+        buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildExtractor, this)});
         break;
     case UNIT_TYPEID::ZERG_HATCHERY:
         OnBuildingDestruction(unit);
-        buildOrder.push_front({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+        buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildHatchery, this)});
         break;
     case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
         OnBuildingDestruction(unit);
-        buildOrder.push_front({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+        buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
         break;
     default: break;
     }
@@ -222,6 +219,10 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
  */
 void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
+    case sc2::UNIT_TYPEID::ZERG_QUEEN: {
+        this->Workers->addUnit(AllyUnit(unit, TASK::UNSET, this->Workers));
+        break;
+    }
     case UNIT_TYPEID::ZERG_DRONE: {
         this->Workers->addUnit(AllyUnit(unit, TASK::MINE, this->Workers));
         break;
@@ -588,7 +589,13 @@ bool BasicSc2Bot::BuildExtractor() {
 
     Units geysers = observation->GetUnits(Unit::Alliance::Neutral,
                                           [this](const Unit &unit) { return IsGeyser(unit); });
-    const Point2D startLocation = observation->GetStartLocation();
+    Point2D startLocation;
+    if(constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
+        startLocation
+          = constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
+    } else {
+        startLocation = startLoc;
+    }
 
     for(const auto &geyser : geysers) {
         if(Distance2D(geyser->pos, startLocation) < BASE_SIZE) {
@@ -727,18 +734,24 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
  */
 Point2D BasicSc2Bot::FindExpansionLocation() {
     const ObservationInterface *observation = Observation();
-
+    Point2D startLocation;
+    if(constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
+        startLocation
+          = constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
+    } else {
+        startLocation = startLoc;
+    }
     Units minerals = observation->GetUnits(Unit::Alliance::Neutral, [](const Unit &u) {
         return u.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD
                || u.unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD750;
     });
 
-    std::sort(minerals.begin(), minerals.end(), [this](const Unit *a, const Unit *b) {
-        return Distance2D(a->pos, startLoc) < Distance2D(b->pos, startLoc);
+    std::sort(minerals.begin(), minerals.end(), [startLocation](const Unit *a, const Unit *b) {
+        return Distance2D(a->pos, startLocation) < Distance2D(b->pos, startLocation);
     });
 
     auto it = std::find_if(minerals.begin(), minerals.end(),
-                           [this](const Unit *m) { return Distance2D(m->pos, startLoc) > 10.0f; });
+                           [startLocation](const Unit *m) { return Distance2D(m->pos, startLocation) > 10.0f; });
 
     while(it != minerals.end()) {
         const Unit *mineral = *it;
