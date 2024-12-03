@@ -28,8 +28,10 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
                    && IsBuilding(unit);
         });
         if(!enemy_units.empty()) {
-            enemyLoc = enemy_units[0]->pos;
-            std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+            if (enemyLoc != enemy_units[0]->pos) {
+                enemyLoc = enemy_units[0]->pos;
+                std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+            }
         }
     }
 }
@@ -658,7 +660,7 @@ bool BasicSc2Bot::BuildHatchery() {
 
     drone->unitTask = TASK::UNSET;
     Actions()->UnitCommand(drone->unit, ABILITY_ID::BUILD_HATCHERY, buildLocation);
-    std::cout << "Sent Command: Build Hatchery at (" << buildLocation.x << ", " << buildLocation.y
+    std::cout << "Command Sent: Build Hatchery at (" << buildLocation.x << ", " << buildLocation.y
               << ")\n";
     return true;
 }
