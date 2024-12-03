@@ -91,24 +91,18 @@ void ScoutController::underAttack(AllyUnit &unit) {
     if(unit.unitTask == TASK::FAST_SCOUT) {
         if(fast_locations.empty()) { initializeFastLocations(); }
         locations = fast_locations;
-    } else if(unit.unitTask == TASK::SCOUT) {
-        if(base_locations.empty()) { initializeBaseLocations(); }
-        locations = base_locations;
-    } else {
-        if(all_locations.empty()) { initializeAllLocations(); }
-        locations = all_locations;
-    }
-    for(const auto &location : locations) {
-        float dist = DistanceSquared2D(location, priorPos);
-        if(dist < minDist) {
-            minDist = dist;
-            closestPoint = location;
+        for(const auto &location : locations) {
+            float dist = DistanceSquared2D(location, priorPos);
+            if(dist < minDist) {
+                minDist = dist;
+                closestPoint = location;
+            }
         }
-    }
-    if(this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
-        this->foundEnemyLocation = closestPoint;
-        std::cout << "Enemy base found at (VIA BEING ATTACKED) (" << foundEnemyLocation.x << ", "
-                  << foundEnemyLocation.y << ")\n";
+        if(this->foundEnemyLocation.x == 0 && this->foundEnemyLocation.y == 0) {
+            this->foundEnemyLocation = closestPoint;
+            std::cout << "Enemy base found at (VIA BEING ATTACKED) (" << foundEnemyLocation.x
+                      << ", " << foundEnemyLocation.y << ")\n";
+        }
     }
     if(all_locations.empty()) { initializeAllLocations(); }
     if(unit.unit != nullptr) {

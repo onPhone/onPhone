@@ -4,14 +4,6 @@
 #include <iostream>
 #include <limits>
 
-namespace std {
-    template <> struct hash<UnitTypeID> {
-        size_t operator()(const UnitTypeID &unit_type) const noexcept {
-            return std::hash<int>()(static_cast<int>(unit_type.ToType()));
-        }
-    };
-}
-
 /**
  * @brief Gets the locations of enemy base if it is visible and sets enemyLoc.
  *
@@ -21,29 +13,24 @@ namespace std {
  *
  */
 void BasicSc2Bot::GetEnemyUnitLocations() {
-    const ObservationInterface *observation = Observation();
-    std::vector<Point3D> enemy_unit_locations;
-
-    // Get all enemy units that are either visible or in snapshot
-    Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
-        return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
-               (unit.display_type == Unit::DisplayType::Visible || // Visible or
-                unit.display_type == Unit::DisplayType::Snapshot)
-               && (unit.unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
-                   || unit.unit_type == UNIT_TYPEID::PROTOSS_NEXUS
-                   || unit.unit_type == UNIT_TYPEID::ZERG_HATCHERY);
-    });
-    if(!enemy_units.empty()) {
-        if (enemyLoc != enemy_units[0]->pos) {
-            enemyLoc = enemy_units[0]->pos;
-            std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
-        }
-        this->controller.scout_controller.foundEnemyLocation.x = 0;
-        this->controller.scout_controller.foundEnemyLocation.y = 0;
-    }
     Point2D scoutControllerEnemyLoc = this->controller.scout_controller.foundEnemyLocation;
     if(scoutControllerEnemyLoc.x != 0 && scoutControllerEnemyLoc.y != 0) {
         enemyLoc = scoutControllerEnemyLoc;
+    } else {
+        const ObservationInterface *observation = Observation();
+        std::vector<Point3D> enemy_unit_locations;
+
+        // Get all enemy units that are either visible or in snapshot
+        Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
+            return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
+                   (unit.display_type == Unit::DisplayType::Visible || // Visible or
+                    unit.display_type == Unit::DisplayType::Snapshot)
+                   && IsBuilding(unit);
+        });
+        if(!enemy_units.empty()) {
+            enemyLoc = enemy_units[0]->pos;
+            std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+        }
     }
 }
 
@@ -183,35 +170,42 @@ void BasicSc2Bot::tryInjection() {
  * @param unit Pointer to the destroyed unit
  */
 void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
-    if (unit->alliance == Unit::Alliance::Enemy) {
-        return;
-    }
-    switch(unit->unit_type.ToType()) {
-    case UNIT_TYPEID::ZERG_ZERGLING:
-        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
-        break;
-    case UNIT_TYPEID::ZERG_ROACH:
-        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
-        break;
-    case UNIT_TYPEID::ZERG_RAVAGER:
-        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
-        break;
-    case UNIT_TYPEID::ZERG_QUEEN:
-        buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildQueen, this)});
-        break;
-    case UNIT_TYPEID::ZERG_EXTRACTOR:
-        OnBuildingDestruction(unit);
-        buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildExtractor, this)});
-        break;
-    case UNIT_TYPEID::ZERG_HATCHERY:
-        OnBuildingDestruction(unit);
-        buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildHatchery, this)});
-        break;
-    case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
-        OnBuildingDestruction(unit);
-        buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
-        break;
-    default: break;
+    if((unit->alliance == Unit::Alliance::Enemy)
+       && (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
+           || unit->unit_type == UNIT_TYPEID::PROTOSS_NEXUS
+           || unit->unit_type == UNIT_TYPEID::ZERG_HATCHERY)
+       && unit->pos.x == controller.scout_controller.foundEnemyLocation.x
+       && unit->pos.y == controller.scout_controller.foundEnemyLocation.y) {
+        controller.scout_controller.foundEnemyLocation.x = 0;
+        controller.scout_controller.foundEnemyLocation.y = 0;
+    } else if(unit->alliance != Unit::Alliance::Enemy) {
+        switch(unit->unit_type.ToType()) {
+        case UNIT_TYPEID::ZERG_ZERGLING:
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
+            break;
+        case UNIT_TYPEID::ZERG_ROACH:
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
+            break;
+        case UNIT_TYPEID::ZERG_RAVAGER:
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
+            break;
+        case UNIT_TYPEID::ZERG_QUEEN:
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildQueen, this)});
+            break;
+        case UNIT_TYPEID::ZERG_EXTRACTOR:
+            OnBuildingDestruction(unit);
+            buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+            break;
+        case UNIT_TYPEID::ZERG_HATCHERY:
+            OnBuildingDestruction(unit);
+            buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+            break;
+        case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
+            OnBuildingDestruction(unit);
+            buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+            break;
+        default: break;
+        }
     }
 }
 
