@@ -26,10 +26,9 @@ void AttackController::step(AllyUnit &unit) {
  * @param unit The attack unit under attack
  */
 void AttackController::underAttack(AllyUnit &unit) {
-    // rallyMultiplier -= 0.01f;
-    // rallyMultiplier = fmax(0.0f, rallyMultiplier);
-    // bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
-    approachDistance += 1;
+    if(unit.unit != nullptr) {
+        approachDistance = fmax(approachDistance + 1, Distance2D(unit.unit->pos, bot.enemyLoc) + 1);
+    }
 };
 
 /**
@@ -44,16 +43,16 @@ void AttackController::onDeath(AllyUnit &unit) {};
 void AttackController::rally(AllyUnit &unit) {
     if(unit.unit != nullptr) {
         if(bot.enemyLoc.x != 0 && bot.enemyLoc.y != 0) {
-            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.enemyLoc);
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.enemyLoc);
             if(DistanceSquared2D(unit.unit->pos, bot.enemyLoc)
                < approachDistance * approachDistance) {
-                bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
+                bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.mapCenter);
                 if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER) {
                     isAttacking = true;
                 }
             }
         } else {
-            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::MOVE_MOVE, bot.mapCenter);
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.mapCenter);
         }
     }
 };

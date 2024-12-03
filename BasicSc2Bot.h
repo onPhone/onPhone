@@ -26,6 +26,8 @@ class BasicSc2Bot : public Agent {
     Point2D enemyLoc;
     Point2D startLoc;
     Point2D mapCenter;
+    bool top;
+    bool right;
 
   private:
     Units constructedBuildings[4]{};

@@ -11,6 +11,9 @@ struct WorkerController : public UnitController {
     void onDeath(AllyUnit &unit);
     void extract(AllyUnit &unit);
     void mine(AllyUnit &unit);
+    void getMostDangerous();
+    const sc2::Unit *most_dangerous_all = nullptr;
+    const sc2::Unit *most_dangerous_ground = nullptr;
 };
 
 #endif // WORKER_CONTROLLER_H

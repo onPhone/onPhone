@@ -1,6 +1,6 @@
 #include "BasicSc2Bot.h"
 
-ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot) {};
+ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot){};
 
 /**
  * @brief Steps the scout unit.
@@ -85,7 +85,9 @@ void ScoutController::scoutFast(AllyUnit &unit) {
 void ScoutController::underAttack(AllyUnit &unit) {
     onDeath(unit);
     if(all_locations.empty()) { initializeAllLocations(); }
-    bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, all_locations[0]);
+    if(unit.unit != nullptr) {
+        bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, all_locations[0]);
+    }
 };
 
 /**
