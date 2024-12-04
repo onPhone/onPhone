@@ -112,10 +112,6 @@ void BasicSc2Bot::OnStep() {
     GetEnemyUnitLocations();
     ExecuteBuildOrder();
     this->controller.step();
-    // for(const auto &base : controller.scout_controller.base_locations) {
-    //     Debug()->DebugSphereOut(base, 1.5f, Colors::Green);
-    // }
-    Debug()->SendDebug();
 }
 
 /**
@@ -875,7 +871,6 @@ void BasicSc2Bot::OnGameEnd() {
     std::cout << "Total game time: " << observation->GetGameLoop() / 22.4 << " seconds"
               << std::endl;
 
-    const Score &score = observation->GetScore();
     const std::vector<PlayerResult> result = observation->GetResults();
     std::cout << "Result: "
               << (result[0].result == GameResult::Win    ? "Won"

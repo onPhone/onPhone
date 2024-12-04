@@ -1,4 +1,3 @@
-#include "AttackController.h"
 #include "BasicSc2Bot.h"
 
 WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
@@ -124,6 +123,7 @@ void WorkerController::mine(AllyUnit &unit) {
                     }
                 }
             }
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, minerals[0]);
         }
     }
 };
@@ -171,7 +171,7 @@ void WorkerController::getMostDangerous() {
             unit_DPS = 0;
         }
         float unit_danger = unit_DPS / (unit_health); // prevent division by 0
-        if(DistanceSquared2D(unit->pos, bot.Observation()->GetStartLocation()) <= BASE_SIZE) {
+        if(DistanceSquared2D(unit->pos, bot.startLoc) <= BASE_SIZE) {
             if(unit_danger > max_danger_all) {
                 max_danger_all = unit_danger;
                 most_dangerous_all = unit;
