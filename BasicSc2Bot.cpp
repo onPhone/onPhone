@@ -29,7 +29,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
                    && IsBuilding(unit);
         });
         if(!enemy_units.empty()) {
-            if (enemyLoc != enemy_units[0]->pos) {
+            if(enemyLoc != enemy_units[0]->pos) {
                 enemyLoc = enemy_units[0]->pos;
                 std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
             }
@@ -37,7 +37,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
     }
 }
 
-BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
+BasicSc2Bot::BasicSc2Bot() : controller(*this){};
 
 /**
  * @brief Initializes the build order for the Zerg bot.
@@ -95,6 +95,10 @@ void BasicSc2Bot::OnGameStart() {
         buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
     }
     buildOrder.push_back({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+    for(int i = 0; i < 5; ++i) {
+        buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
+    }
+    buildOrder.push_back({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
 }
 
 /**
@@ -187,11 +191,10 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
         case UNIT_TYPEID::ZERG_ZERGLING:
             buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
             break;
-        case UNIT_TYPEID::ZERG_ROACH:
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
-            break;
         case UNIT_TYPEID::ZERG_RAVAGER:
             buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
+        case UNIT_TYPEID::ZERG_ROACH:
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
             break;
         case UNIT_TYPEID::ZERG_QUEEN:
             buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildQueen, this)});
