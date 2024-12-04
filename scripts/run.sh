@@ -45,9 +45,12 @@ else
     map="CactusValleyLE"
 fi
 
-cd build
-make
-cd bin
-./BasicSc2Bot -c -a $race -d $difficulty -m $map.SC2Map
-cd ..
-cd ..
+if [ ! -d "build" ]; then
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ../
+    cd ..
+fi
+
+cd build && make && cd ..
+./build/bin/BasicSc2Bot -c -a $race -d $difficulty -m $map.SC2Map

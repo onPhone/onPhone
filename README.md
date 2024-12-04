@@ -95,14 +95,14 @@ Remember to replace `<USER>` with the name of your user profile.
 In addition to competing against other bots using the [Sc2LadderServer](https://github.com/solinas/Sc2LadderServer), this bot can play against the built-in
 AI by specifying command line arguments.
 
-You can find the build target under the `bin` directory. For example,
+You can find the build target under the `bin` directory. For example, in your root directory:
 
 ```shell
 # Windows
-build/bin/BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+./build/bin/BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
 
 # Mac
-build/bin/BasicSc2Bot -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+./build/bin/BasicSc2Bot -c -a zerg -d Hard -m CactusValleyLE.SC2Map
 ```
 
 will result in the bot playing against the zerg built-in AI on hard difficulty on the map CactusValleyLE.

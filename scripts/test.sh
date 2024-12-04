@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# build the project
+if [ ! -d "build" ]; then
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ../
+    cd ..
+fi
+
+cd build && make && cd ..
+
 # Output file for statistics
 timestamp=$(date +"%H%M")
 output_file="test-results-${timestamp}.txt"
@@ -31,7 +41,7 @@ for race in "${races[@]}"; do
                 echo "Testing: OnPhone vs $race : $difficulty on $map (Run $i/5)" | tee -a $output_file
 
                 # Run the game and capture output
-                game_output=$(timeout 200s build/bin/BasicSc2Bot -c -a "$race" -d "$difficulty" -m "$map.SC2Map")
+                game_output=$(timeout 500s ./build/bin/BasicSc2Bot -c -a "$race" -d "$difficulty" -m "$map.SC2Map")
 
                 # Extract result from game output
                 result=$(echo "$game_output" | grep "Result:")
