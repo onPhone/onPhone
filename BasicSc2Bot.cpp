@@ -191,10 +191,12 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
         case UNIT_TYPEID::ZERG_ZERGLING:
             buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
             break;
-        case UNIT_TYPEID::ZERG_RAVAGER:
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
         case UNIT_TYPEID::ZERG_ROACH:
             buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
+            break;
+        case UNIT_TYPEID::ZERG_RAVAGER:
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
+            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
             break;
         case UNIT_TYPEID::ZERG_QUEEN:
             buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildQueen, this)});
