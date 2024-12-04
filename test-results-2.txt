@@ -1,0 +1,37 @@
+Bot Test Results 
+================== 
+2024-12-03 20:26:27.88 
+ 
+Testing: OnPhone vs terran : VeryHard on CactusValleyLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs terran : VeryHard on BelShirVestigeLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs terran : VeryHard on ProximaStationLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs terran : Hard on CactusValleyLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs terran : Hard on BelShirVestigeLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs terran : Hard on ProximaStationLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs protoss : VeryHard on CactusValleyLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs protoss : VeryHard on BelShirVestigeLE 
+Result: Won  
+ECHO is off.
+---------------------------------------- 
+Testing: OnPhone vs protoss : VeryHard on ProximaStationLE 

@@ -26,7 +26,7 @@ void AttackController::step(AllyUnit &unit) {
  * @param unit The attack unit under attack
  */
 void AttackController::underAttack(AllyUnit &unit) {
-    if(unit.unit != nullptr) {
+    if(unit.unit != nullptr && unit.unit->unit_type == UNIT_TYPEID::ZERG_ZERGLING) {
         approachDistance = fmax(approachDistance + 1, Distance2D(unit.unit->pos, bot.enemyLoc) + 1);
     }
 };
@@ -46,13 +46,13 @@ void AttackController::rally(AllyUnit &unit) {
             bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.enemyLoc);
             if(DistanceSquared2D(unit.unit->pos, bot.enemyLoc)
                < approachDistance * approachDistance) {
-                bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.mapCenter);
+                bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, bot.mapCenter);
                 if(unit.unit->unit_type.ToType() == UNIT_TYPEID::ZERG_RAVAGER) {
                     isAttacking = true;
                 }
             }
         } else {
-            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::ATTACK_ATTACK, bot.mapCenter);
+            bot.Actions()->UnitCommand(unit.unit, ABILITY_ID::SMART, bot.mapCenter);
         }
     }
 };
@@ -88,7 +88,11 @@ void AttackController::getMostDangerous() {
     most_dangerous_all = nullptr;
     most_dangerous_ground = nullptr;
     // currently attacks weakest enemy unit
-    const auto enemy_units = bot.Observation()->GetUnits(Unit::Alliance::Enemy);
+    Units enemy_units = bot.Observation()->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
+        return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
+               (unit.display_type == Unit::DisplayType::Visible || // Visible or
+                unit.display_type == Unit::DisplayType::Snapshot);
+    });
     const UnitTypes unit_data = bot.Observation()->GetUnitTypeData();
     float max_danger_all = std::numeric_limits<float>::lowest();
     float max_danger_ground = std::numeric_limits<float>::lowest();

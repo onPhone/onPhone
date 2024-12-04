@@ -150,7 +150,11 @@ void WorkerController::getMostDangerous() {
     most_dangerous_all = nullptr;
     most_dangerous_ground = nullptr;
     // currently attacks weakest enemy unit
-    const auto enemy_units = bot.Observation()->GetUnits(Unit::Alliance::Enemy);
+    Units enemy_units = bot.Observation()->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
+        return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
+               (unit.display_type == Unit::DisplayType::Visible || // Visible or
+                unit.display_type == Unit::DisplayType::Snapshot);
+    });
     const UnitTypes unit_data = bot.Observation()->GetUnitTypeData();
     float max_danger_all = std::numeric_limits<float>::lowest();
     float max_danger_ground = std::numeric_limits<float>::lowest();
