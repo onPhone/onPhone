@@ -43,30 +43,18 @@ for %%R in (%races%) do (
         cd build
         cd bin
         echo "Running game..."
-        BasicSc2Bot.exe -c -a %%R -d VeryHard -m %%M.SC2Map > game_output.txt
+        BasicSc2Bot.exe -c -a %%R -d VeryHard -m %%M.SC2Map > ../../log.txt
         echo "Game run complete!"
         cd ..\..
 
-        :: Read game output
-        set "game_output="
-        for /f "delims=" %%G in (game_output.txt) do (
-            set "game_output=!game_output! %%G"
-        )
-
-        echo !game_output!
 
         :: Extract result from game output
-        for /f "tokens=*" %%G in ('echo !game_output! ^| findstr "Result:"') do set "result=%%G"
-        for /f "tokens=*" %%G in ('echo !game_output! ^| findstr "Total game time:"') do set "length=%%G"
-        for /f "tokens=*" %%G in ('echo !game_output! ^| findstr "Game ended after:"') do set "loops=%%G"
-        echo !loops! >> %output_file%
+        for /f "tokens=*" %%G in ('findstr "Result:" log.txt') do set "result=%%G"
+        for /f "tokens=*" %%G in ('findstr "Total game time:" log.txt') do set "length=%%G"
+        for /f "tokens=*" %%G in ('findstr "Game ended after:" log.txt') do set "loops=%%G"
 
         echo !result! >> %output_file%
-        if defined length (
-            echo !length! >> %output_file%
-        ) else (
-            echo "Total game time not found" >> %output_file%
-        )
+        echo !length! >> %output_file%
         echo ---------------------------------------- >> %output_file%
 
         :: Update counters
@@ -93,14 +81,50 @@ for %%R in (%races%) do (
     )
 )
 
-:: Calculate and append summary statistics
-echo. >> %output_file%
-echo Summary Statistics >> %output_file%
-echo ================== >> %output_file%
-echo Total Games: %total_games% >> %output_file%
-echo Total Wins: %wins% >> %output_file%
-set /a win_percentage=%wins%*100/%total_games%
-echo Win Rate: %win_percentage%%% >> %output_file%
 
-:: Display remaining stats as needed
+:: Function to calculate win rate (integer math for percent)
+set scale_factor=100
+
+:: Append summary statistics
+(
+echo.
+echo Summary Statistics
+echo ==================
+echo Total Games: %total_games%
+echo Total Wins: %wins%
+
+:: Calculate win percentage
+set /a scaled_wins=%wins% * %scale_factor% / %total_games%
+echo Win Rate: !scaled_wins!.00%%
+
+echo.
+echo Win Rates by Race:
+echo ==================
+:: Terran win rate
+set /a scaled_wins_terran=%wins_by_race_terran% * %scale_factor% / %total_by_race_terran%
+echo terran: !scaled_wins_terran!.00%%
+
+:: Protoss win rate
+set /a scaled_wins_protoss=%wins_by_race_protoss% * %scale_factor% / %total_by_race_protoss%
+echo protoss: !scaled_wins_protoss!.00%%
+
+:: Zerg win rate
+set /a scaled_wins_zerg=%wins_by_race_zerg% * %scale_factor% / %total_by_race_zerg%
+echo zerg: !scaled_wins_zerg!.00%%
+
+echo.
+echo Win Rates by Map:
+echo ==================
+:: Map-specific win rates
+set /a scaled_wins_cactus=%wins_by_map_cactus% * %scale_factor% / %total_by_map_cactus%
+echo CactusValleyLE: !scaled_wins_cactus!.00%%
+
+set /a scaled_wins_belshir=%wins_by_map_belshir% * %scale_factor% / %total_by_map_belshir%
+echo BelShirVestigeLE: !scaled_wins_belshir!.00%%
+
+set /a scaled_wins_proxima=%wins_by_map_proxima% * %scale_factor% / %total_by_map_proxima%
+echo ProximaStationLE: !scaled_wins_proxima!.00%%
+
+) >> %output_file%
+
 echo Testing complete! Results saved to %output_file%
