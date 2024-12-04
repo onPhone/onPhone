@@ -28,17 +28,19 @@ set races=terran protoss zerg
 set maps=CactusValleyLE BelShirVestigeLE ProximaStationLE
 set runs=3
 
-:: Initialize counters
-set /a total_by_race_terran=0, total_by_race_protoss=0, total_by_race_zerg=0
-set /a wins_by_race_terran=0, wins_by_race_protoss=0, wins_by_race_zerg=0
-set /a total_by_map_cactus=0, total_by_map_belshir=0, total_by_map_proxima=0
-set /a wins_by_map_cactus=0, wins_by_map_belshir=0, wins_by_map_proxima=0
-set /a total_games=0, wins=0
+:initialize_counters
+    set /a total_by_race_terran=0, total_by_race_protoss=0, total_by_race_zerg=0
+    set /a wins_by_race_terran=0, wins_by_race_protoss=0, wins_by_race_zerg=0
+    set /a total_by_map_cactus=0, total_by_map_belshir=0, total_by_map_proxima=0
+    set /a wins_by_map_cactus=0, wins_by_map_belshir=0, wins_by_map_proxima=0
+    set /a total_games=0, wins=0
+goto :eof
 
 
 
 :: Run combinations
 for /l %%N in (1,1,%runs%) do (
+    call :initialize_counters
     for %%R in (%races%) do (
         for %%M in (%maps%) do (
             echo Testing: OnPhone vs %%R : VeryHard on %%M >> %output_file%
@@ -90,48 +92,51 @@ for /l %%N in (1,1,%runs%) do (
 
 
 :print_summary_statistics
-:: Function to calculate win rate (integer math for percent)
-set scale_factor=100
+    :: Function to calculate win rate (integer math for percent)
+    set scale_factor=100
 
-:: Append summary statistics
-(
-echo.
-echo Summary Statistics
-echo ==================
-echo Total Games: %total_games%
-echo Total Wins: %wins%
+    :: Append summary statistics
+    (
+    echo.
+    echo Summary Statistics
+    echo ==================
+    echo Total Games: %total_games%
+    echo Total Wins: %wins%
 
-:: Calculate win percentage
-set /a scaled_wins=%wins% * %scale_factor% / %total_games%
-echo Win Rate: !scaled_wins!.00%%
+    :: Calculate win percentage
+    set /a scaled_wins=%wins% * %scale_factor% / %total_games%
+    echo Win Rate: !scaled_wins!.00%%
 
-echo.
-echo Win Rates by Race:
-echo ==================
-:: Terran win rate
-set /a scaled_wins_terran=%wins_by_race_terran% * %scale_factor% / %total_by_race_terran%
-echo terran: !scaled_wins_terran!.00%%
+    echo.
+    echo Win Rates by Race:
+    echo ==================
+    :: Terran win rate
+    set /a scaled_wins_terran=%wins_by_race_terran% * %scale_factor% / %total_by_race_terran%
+    echo terran: !scaled_wins_terran!.00%%
 
-:: Protoss win rate
-set /a scaled_wins_protoss=%wins_by_race_protoss% * %scale_factor% / %total_by_race_protoss%
-echo protoss: !scaled_wins_protoss!.00%%
+    :: Protoss win rate
+    set /a scaled_wins_protoss=%wins_by_race_protoss% * %scale_factor% / %total_by_race_protoss%
+    echo protoss: !scaled_wins_protoss!.00%%
 
-:: Zerg win rate
-set /a scaled_wins_zerg=%wins_by_race_zerg% * %scale_factor% / %total_by_race_zerg%
-echo zerg: !scaled_wins_zerg!.00%%
+    :: Zerg win rate
+    set /a scaled_wins_zerg=%wins_by_race_zerg% * %scale_factor% / %total_by_race_zerg%
+    echo zerg: !scaled_wins_zerg!.00%%
 
-echo.
-echo Win Rates by Map:
-echo ==================
-:: Map-specific win rates
-set /a scaled_wins_cactus=%wins_by_map_cactus% * %scale_factor% / %total_by_map_cactus%
-echo CactusValleyLE: !scaled_wins_cactus!.00%%
+    echo.
+    echo Win Rates by Map:
+    echo ==================
+    :: Map-specific win rates
+    set /a scaled_wins_cactus=%wins_by_map_cactus% * %scale_factor% / %total_by_map_cactus%
+    echo CactusValleyLE: !scaled_wins_cactus!.00%%
 
-set /a scaled_wins_belshir=%wins_by_map_belshir% * %scale_factor% / %total_by_map_belshir%
-echo BelShirVestigeLE: !scaled_wins_belshir!.00%%
+    set /a scaled_wins_belshir=%wins_by_map_belshir% * %scale_factor% / %total_by_map_belshir%
+    echo BelShirVestigeLE: !scaled_wins_belshir!.00%%
 
-set /a scaled_wins_proxima=%wins_by_map_proxima% * %scale_factor% / %total_by_map_proxima%
-echo ProximaStationLE: !scaled_wins_proxima!.00%%
-
-) >> %output_file%
+    set /a scaled_wins_proxima=%wins_by_map_proxima% * %scale_factor% / %total_by_map_proxima%
+    echo ProximaStationLE: !scaled_wins_proxima!.00%%
+    
+    echo ----------------------------------------
+    echo.
+    
+    ) >> %output_file%
 goto :eof
