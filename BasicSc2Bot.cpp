@@ -5,39 +5,7 @@
 #include <iostream>
 #include <limits>
 
-/**
- * @brief Gets the locations of enemy base if it is visible and sets enemyLoc.
- *
- * This function retrieves the locations of all enemy units that are either
- * visible or in snapshot and then establishes the enemy base location based
- * on whether they are buildings.
- *
- */
-void BasicSc2Bot::GetEnemyUnitLocations() {
-    Point2D scoutControllerEnemyLoc = this->controller.scout_controller.foundEnemyLocation;
-    if(scoutControllerEnemyLoc.x != 0 && scoutControllerEnemyLoc.y != 0) {
-        enemyLoc = scoutControllerEnemyLoc;
-    } else {
-        const ObservationInterface *observation = Observation();
-        std::vector<Point3D> enemy_unit_locations;
-
-        // Get all enemy units that are either visible or in snapshot
-        Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
-            return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
-                   (unit.display_type == Unit::DisplayType::Visible || // Visible or
-                    unit.display_type == Unit::DisplayType::Snapshot)
-                   && IsBuilding(unit);
-        });
-        if(!enemy_units.empty()) {
-            if(enemyLoc != enemy_units[0]->pos) {
-                enemyLoc = enemy_units[0]->pos;
-                std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
-            }
-        }
-    }
-}
-
-BasicSc2Bot::BasicSc2Bot() : controller(*this){};
+BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
 
 /**
  * @brief Initializes the build order for the Zerg bot.
@@ -115,56 +83,6 @@ void BasicSc2Bot::OnStep() {
 }
 
 /**
- * @brief Tries to inject larvae into hatcheries using queens.
- *
- * This function checks if there are any available queens with enough energy
- * to inject larvae into hatcheries. If a queen is available, it is commanded
- * to inject larvae into the hatchery closest to it.
- */
-void BasicSc2Bot::tryInjection() {
-    const ObservationInterface *observation = Observation();
-
-    Units queens = observation->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
-        return unit.unit_type == UNIT_TYPEID::ZERG_QUEEN && unit.energy >= 25;
-    });
-
-    if(queens.empty()) { return; }
-
-    Units hatcheries = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)];
-
-    if(hatcheries.empty()) { return; }
-
-    for(const auto &hatchery : hatcheries) {
-        bool already_injected = false;
-        for(const auto &order : hatchery->orders) {
-            if(order.ability_id == ABILITY_ID::EFFECT_INJECTLARVA) {
-                already_injected = true;
-                break;
-            }
-        }
-
-        if(!already_injected) {
-            // Find the closest Queen to this Hatchery
-            const Unit *closest_queen = nullptr;
-            float closest_distance = std::numeric_limits<float>::max();
-
-            for(const auto &queen : queens) {
-                float distance = DistanceSquared2D(queen->pos, hatchery->pos);
-                if(distance < closest_distance && queen->orders.empty()) {
-                    closest_distance = distance;
-                    closest_queen = queen;
-                }
-            }
-
-            if(closest_queen) {
-                Actions()->UnitCommand(closest_queen, ABILITY_ID::EFFECT_INJECTLARVA, hatchery);
-                std::cout << "Command Sent: Injecting larvae into hatchery\n";
-            }
-        }
-    }
-}
-
-/**
  * @brief Handles unit destruction events.
  *
  * This function is called whenever a unit is destroyed. It checks the type
@@ -224,7 +142,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
  */
 void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
-    case sc2::UNIT_TYPEID::ZERG_QUEEN: {
+    case UNIT_TYPEID::ZERG_QUEEN: {
         this->Workers->addUnit(AllyUnit(unit, TASK::UNSET, this->Workers));
         break;
     }
@@ -329,6 +247,56 @@ void BasicSc2Bot::ExecuteBuildOrder() {
 }
 
 /**
+ * @brief Tries to inject larvae into hatcheries using queens.
+ *
+ * This function checks if there are any available queens with enough energy
+ * to inject larvae into hatcheries. If a queen is available, it is commanded
+ * to inject larvae into the hatchery closest to it.
+ */
+void BasicSc2Bot::tryInjection() {
+    const ObservationInterface *observation = Observation();
+
+    Units queens = observation->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
+        return unit.unit_type == UNIT_TYPEID::ZERG_QUEEN && unit.energy >= 25;
+    });
+
+    if(queens.empty()) { return; }
+
+    Units hatcheries = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)];
+
+    if(hatcheries.empty()) { return; }
+
+    for(const auto &hatchery : hatcheries) {
+        bool already_injected = false;
+        for(const auto &order : hatchery->orders) {
+            if(order.ability_id == ABILITY_ID::EFFECT_INJECTLARVA) {
+                already_injected = true;
+                break;
+            }
+        }
+
+        if(!already_injected) {
+            // Find the closest Queen to this Hatchery
+            const Unit *closest_queen = nullptr;
+            float closest_distance = std::numeric_limits<float>::max();
+
+            for(const auto &queen : queens) {
+                float distance = DistanceSquared2D(queen->pos, hatchery->pos);
+                if(distance < closest_distance && queen->orders.empty()) {
+                    closest_distance = distance;
+                    closest_queen = queen;
+                }
+            }
+
+            if(closest_queen) {
+                Actions()->UnitCommand(closest_queen, ABILITY_ID::EFFECT_INJECTLARVA, hatchery);
+                std::cout << "Command Sent: Injecting larvae into hatchery\n";
+            }
+        }
+    }
+}
+
+/**
  * @brief Attempts to build a Drone unit.
  *
  * This function checks for available larva and sufficient minerals,
@@ -339,8 +307,6 @@ void BasicSc2Bot::ExecuteBuildOrder() {
  */
 bool BasicSc2Bot::BuildDrone() {
     const ObservationInterface *observation = Observation();
-    const int DRONE_MINERAL_COST = 50;
-    const int DRONE_FOOD_COST = 1;
 
     if(observation->GetMinerals() < DRONE_MINERAL_COST
        || observation->GetFoodUsed() + DRONE_FOOD_COST > observation->GetFoodCap()) {
@@ -370,7 +336,6 @@ bool BasicSc2Bot::BuildDrone() {
  */
 bool BasicSc2Bot::BuildOverlord() {
     const ObservationInterface *observation = Observation();
-    const int OVERLORD_MINERAL_COST = 100;
 
     if(observation->GetMinerals() < OVERLORD_MINERAL_COST) { return false; }
 
@@ -397,8 +362,6 @@ bool BasicSc2Bot::BuildOverlord() {
  */
 bool BasicSc2Bot::BuildZergling() {
     const ObservationInterface *observation = Observation();
-    const int ZERGLING_MINERAL_COST = 50;
-    const int ZERGLING_FOOD_COST = 1;
 
     if(observation->GetMinerals() < ZERGLING_MINERAL_COST
        || observation->GetFoodUsed() + ZERGLING_FOOD_COST > observation->GetFoodCap()) {
@@ -431,8 +394,6 @@ bool BasicSc2Bot::BuildZergling() {
  */
 bool BasicSc2Bot::BuildQueen() {
     const ObservationInterface *observation = Observation();
-    const int QUEEN_MINERAL_COST = 175;
-    const int QUEEN_FOOD_COST = 2;
 
     if(observation->GetMinerals() < QUEEN_MINERAL_COST
        || observation->GetFoodUsed() + QUEEN_FOOD_COST > observation->GetFoodCap()) {
@@ -461,9 +422,6 @@ bool BasicSc2Bot::BuildQueen() {
  */
 bool BasicSc2Bot::BuildRoach() {
     const ObservationInterface *observation = Observation();
-    const int ROACH_MINERAL_COST = 75;
-    const int ROACH_VESPENE_COST = 25;
-    const int ROACH_FOOD_COST = 2;
 
     if(observation->GetMinerals() < ROACH_MINERAL_COST
        || observation->GetVespene() < ROACH_VESPENE_COST
@@ -497,8 +455,6 @@ bool BasicSc2Bot::BuildRoach() {
  */
 bool BasicSc2Bot::BuildRavager() {
     const ObservationInterface *observation = Observation();
-    const int RAVAGER_MINERAL_COST = 25;
-    const int RAVAGER_VESPENE_COST = 75;
 
     if(observation->GetMinerals() < RAVAGER_MINERAL_COST
        || observation->GetVespene() < RAVAGER_VESPENE_COST
@@ -529,7 +485,6 @@ bool BasicSc2Bot::BuildRavager() {
  */
 bool BasicSc2Bot::BuildSpawningPool() {
     const ObservationInterface *observation = Observation();
-    const int SPAWNINGPOOL_COST = 200;
     if(observation->GetMinerals() < SPAWNINGPOOL_COST) return false;
 
     AllyUnit *drone = nullptr;
@@ -580,7 +535,6 @@ bool BasicSc2Bot::IsGeyser(const Unit &unit) {
  */
 bool BasicSc2Bot::BuildExtractor() {
     const ObservationInterface *observation = Observation();
-    const int EXTRACTOR_COST = 25;
     if(observation->GetMinerals() < EXTRACTOR_COST) return false;
 
     AllyUnit *drone = nullptr;
@@ -595,9 +549,8 @@ bool BasicSc2Bot::BuildExtractor() {
     Units geysers = observation->GetUnits(Unit::Alliance::Neutral,
                                           [this](const Unit &unit) { return IsGeyser(unit); });
     Point2D startLocation;
-    if(constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
-        startLocation
-          = constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
+    if(constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
+        startLocation = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
     } else {
         startLocation = startLoc;
     }
@@ -624,9 +577,8 @@ bool BasicSc2Bot::BuildExtractor() {
  */
 void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
     int assignedWorkers = 0;
-    int maxWorkers = 3;
     for(auto &worker : this->Workers->units) {
-        if(assignedWorkers >= maxWorkers) break;
+        if(assignedWorkers >= MAX_EXTRACTOR_WORKERS) break;
         if(worker.unitTask == TASK::MINE) {
             ++assignedWorkers;
             worker.unitTask = TASK::EXTRACT;
@@ -645,7 +597,6 @@ void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
  */
 bool BasicSc2Bot::BuildHatchery() {
     const ObservationInterface *observation = Observation();
-    const int HATCHERY_COST = 275;
     if(observation->GetMinerals() < HATCHERY_COST) return false;
 
     AllyUnit *drone = nullptr;
@@ -679,7 +630,6 @@ bool BasicSc2Bot::BuildHatchery() {
  */
 bool BasicSc2Bot::BuildRoachWarren() {
     const ObservationInterface *observation = Observation();
-    const int ROACHWARREN_COST = 150;
     if(observation->GetMinerals() < ROACHWARREN_COST) return false;
 
     AllyUnit *drone = nullptr;
@@ -711,7 +661,6 @@ bool BasicSc2Bot::BuildRoachWarren() {
  */
 bool BasicSc2Bot::ResearchMetabolicBoost() {
     const ObservationInterface *observation = Observation();
-    const int METABOLIC_BOOST_COST = 100;
     const auto &spawning_pool
       = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
 
@@ -741,9 +690,8 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
 Point2D BasicSc2Bot::FindExpansionLocation() {
     const ObservationInterface *observation = Observation();
     Point2D startLocation;
-    if(constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
-        startLocation
-          = constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
+    if(constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
+        startLocation = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
     } else {
         startLocation = startLoc;
     }
@@ -796,6 +744,7 @@ Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
 
     return Point2D(0, 0);
 }
+
 /**
  * @brief Finds a suitable placement for a building near the main Hatchery.
  *
@@ -815,7 +764,7 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
         dy[3] = 1;
     }
     Point2D current;
-    if(constructedBuildings[GetBuildingIndex(sc2::UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
+    if(constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
         current = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)][0]->pos;
     } else {
         current = Observation()->GetStartLocation();
@@ -836,6 +785,38 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
     }
 
     return Point2D(0, 0);
+}
+
+/**
+ * @brief Gets the locations of enemy base if it is visible and sets enemyLoc.
+ *
+ * This function retrieves the locations of all enemy units that are either
+ * visible or in snapshot and then establishes the enemy base location based
+ * on whether they are buildings.
+ *
+ */
+void BasicSc2Bot::GetEnemyUnitLocations() {
+    Point2D scoutControllerEnemyLoc = this->controller.scout_controller.foundEnemyLocation;
+    if(scoutControllerEnemyLoc.x != 0 && scoutControllerEnemyLoc.y != 0) {
+        enemyLoc = scoutControllerEnemyLoc;
+    } else {
+        const ObservationInterface *observation = Observation();
+        std::vector<Point3D> enemy_unit_locations;
+
+        // Get all enemy units that are either visible or in snapshot
+        Units enemy_units = observation->GetUnits(Unit::Alliance::Enemy, [](const Unit &unit) {
+            return unit.unit_type.ToType() != UNIT_TYPEID::INVALID &&  // Valid unit
+                   (unit.display_type == Unit::DisplayType::Visible || // Visible or
+                    unit.display_type == Unit::DisplayType::Snapshot)
+                   && IsBuilding(unit);
+        });
+        if(!enemy_units.empty()) {
+            if(enemyLoc != enemy_units[0]->pos) {
+                enemyLoc = enemy_units[0]->pos;
+                std::cout << "Enemy found at (" << enemyLoc.x << ", " << enemyLoc.y << ")\n";
+            }
+        }
+    }
 }
 
 /**
@@ -865,6 +846,12 @@ int BasicSc2Bot::GetBuildingIndex(UNIT_TYPEID type) {
     }
 }
 
+/**
+ * @brief Called when a game ends.
+ *
+ * Prints game statistics including total game loops, game duration in seconds,
+ * and the match result (Win/Loss/Tie).
+ */
 void BasicSc2Bot::OnGameEnd() {
     const ObservationInterface *observation = Observation();
     std::cout << "Game ended after: " << observation->GetGameLoop() << " loops " << std::endl;

@@ -1,6 +1,6 @@
 #include "BasicSc2Bot.h"
 
-ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot){};
+ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the scout unit.

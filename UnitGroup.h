@@ -1,8 +1,8 @@
 #ifndef UNITGROUP_H
 #define UNITGROUP_H
 
-#include "sc2-includes.h"
 #include "enums_constants.h"
+#include "sc2-includes.h"
 
 struct AllyUnit;
 

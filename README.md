@@ -109,6 +109,29 @@ will result in the bot playing against the zerg built-in AI on hard difficulty o
 
 Or, you can use this shell script to play against the built-in AI:
 
-```shell
-./run.sh
+```bash
+# Windows
+scripts/run.bat
+
+# Mac
+scripts/run.sh
 ```
+
+# Automated Testing
+
+Run comprehensive tests across multiple game configurations:
+
+```bash
+# Windows
+scripts/test.bat
+
+# Mac
+scripts/test.sh
+```
+
+The script will:
+
+- Test against all races (Terran, Protoss, Zerg)
+- Run through multiple difficulty levels
+- Test on different maps
+- Generate detailed statistics in `test-results-<x>.txt`

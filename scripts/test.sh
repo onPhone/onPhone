@@ -2,7 +2,7 @@
 
 # Output file for statistics
 timestamp=$(date +"%H%M")
-output_file="test_${timestamp}.txt"
+output_file="test-results-${timestamp}.txt"
 echo "Bot Test Results" > $output_file
 echo "==================" >> $output_file
 date >> $output_file

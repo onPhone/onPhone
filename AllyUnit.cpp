@@ -1,5 +1,5 @@
-#include "sc2-includes.h"
 #include "AllyUnit.h"
+#include "sc2-includes.h"
 
 using namespace sc2;
 
@@ -52,4 +52,3 @@ bool AllyUnit::underAttack() const {
     if(this->unit == nullptr) { return false; }
     return this->unit->health < priorHealth;
 };
-

@@ -1,10 +1,10 @@
 #ifndef MASTER_CONTROLLER_H
 #define MASTER_CONTROLLER_H
 
-#include "sc2-includes.h"
-#include "WorkerController.h"
-#include "ScoutController.h"
 #include "AttackController.h"
+#include "ScoutController.h"
+#include "WorkerController.h"
+#include "sc2-includes.h"
 
 class BasicSc2Bot;
 struct UnitGroup;

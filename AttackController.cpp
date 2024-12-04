@@ -40,6 +40,10 @@ void AttackController::underAttack(AllyUnit &unit) {
  */
 void AttackController::onDeath(AllyUnit &unit) {};
 
+/**
+ * Rallies a unit to attack the enemy base or move to map center.
+ * @param unit The unit to rally
+ */
 void AttackController::rally(AllyUnit &unit) {
     if(unit.unit != nullptr) {
         if(bot.enemyLoc.x != 0 && bot.enemyLoc.y != 0) {
@@ -57,6 +61,10 @@ void AttackController::rally(AllyUnit &unit) {
     }
 };
 
+/**
+ * Commands a unit to attack the most dangerous enemy ground unit or enemy base.
+ * @param unit The unit to command
+ */
 void AttackController::attack(AllyUnit &unit) {
     if(unit.unit != nullptr) {
         if(most_dangerous_ground != nullptr) {
