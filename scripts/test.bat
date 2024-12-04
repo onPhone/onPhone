@@ -44,15 +44,11 @@ for /l %%N in (1,1,%runs%) do (
     for %%R in (%races%) do (
         for %%M in (%maps%) do (
             echo Testing: OnPhone vs %%R : VeryHard on %%M >> %output_file%
-            
-            :: Run the game and capture output
-            cd build
-            cd bin
-            echo Running OnPhone vs %%R : VeryHard on %%M
-            BasicSc2Bot.exe -c -a %%R -d VeryHard -m %%M.SC2Map > ../../log.txt
-            echo Game run complete!
-            cd ..\..
 
+            :: Run the game and capture output
+            echo Running OnPhone vs %%R : VeryHard on %%M
+            .\build\bin\BasicSc2Bot.exe -c -a %%R -d VeryHard -m %%M.SC2Map > ../../log.txt
+            echo Game run complete!
 
             :: Extract result from game output
             for /f "tokens=*" %%G in ('findstr "Result:" log.txt') do set "result=%%G"
@@ -134,9 +130,9 @@ for /l %%N in (1,1,%runs%) do (
 
     set /a scaled_wins_proxima=%wins_by_map_proxima% * %scale_factor% / %total_by_map_proxima%
     echo ProximaStationLE: !scaled_wins_proxima!.00%%
-    
+
     echo ----------------------------------------
     echo.
-    
+
     ) >> %output_file%
 goto :eof

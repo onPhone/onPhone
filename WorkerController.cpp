@@ -1,6 +1,6 @@
 #include "BasicSc2Bot.h"
 
-WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot){};
+WorkerController::WorkerController(BasicSc2Bot &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the worker unit.
