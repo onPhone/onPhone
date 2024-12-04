@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Output file for statistics
-output_file="test-results.txt"
+timestamp=$(date +"%H%M")
+output_file="test_${timestamp}.txt"
 echo "Bot Test Results" > $output_file
 echo "==================" >> $output_file
 date >> $output_file
@@ -9,7 +10,7 @@ echo "" >> $output_file
 
 # Arrays of test parameters
 races=("terran" "protoss" "zerg")
-difficulties=("Hard" "VeryHard")
+difficulties=("VeryHard")
 maps=("CactusValleyLE" "BelShirVestigeLE" "ProximaStationLE")
 
 # Initialize counters
@@ -26,62 +27,59 @@ wins=0
 for race in "${races[@]}"; do
     for difficulty in "${difficulties[@]}"; do
         for map in "${maps[@]}"; do
-            echo "Testing: OnPhone vs $race : $difficulty on $map" | tee -a $output_file
+            for ((i=1; i<=5; i++)); do
+                echo "Testing: OnPhone vs $race : $difficulty on $map (Run $i/5)" | tee -a $output_file
 
-            # Run the game and capture output
-            cd build
-            make
-            cd bin
-            game_output=$(timeout 200s ./BasicSc2Bot -c -a "$race" -d "$difficulty" -m "$map.SC2Map")
-            cd ../..
+                # Run the game and capture output
+                game_output=$(timeout 200s build/bin/BasicSc2Bot -c -a "$race" -d "$difficulty" -m "$map.SC2Map")
 
-            # Extract result from game output
-            result=$(echo "$game_output" | grep "Result:")
-            time=$(echo "$game_output" | grep "Total game time:")
-            loops=$(echo "$game_output" | grep "Game ended after:")
-            # Record results
-            echo "$result" >> $output_file
-            echo "$time" >> $output_file
-            echo "----------------------------------------" >> $output_file
+                # Extract result from game output
+                result=$(echo "$game_output" | grep "Result:")
+                time=$(echo "$game_output" | grep "Total game time:")
+                # Record results
+                echo "$result" >> $output_file
+                echo "$time" >> $output_file
+                echo "----------------------------------------" >> $output_file
 
-            # Update counters
-            case $race in
-                "terran") ((total_by_race_terran++));;
-                "protoss") ((total_by_race_protoss++));;
-                "zerg") ((total_by_race_zerg++));;
-            esac
-
-            case $difficulty in
-                "Hard") ((total_by_difficulty_hard++));;
-                "VeryHard") ((total_by_difficulty_veryhard++));;
-            esac
-
-            case $map in
-                "CactusValleyLE") ((total_by_map_cactus++));;
-                "BelShirVestigeLE") ((total_by_map_belshir++));;
-                "ProximaStationLE") ((total_by_map_proxima++));;
-            esac
-
-            if [[ $result == *"Won"* ]]; then
+                # Update counters
                 case $race in
-                    "terran") ((wins_by_race_terran++));;
-                    "protoss") ((wins_by_race_protoss++));;
-                    "zerg") ((wins_by_race_zerg++));;
+                    "terran") ((total_by_race_terran++));;
+                    "protoss") ((total_by_race_protoss++));;
+                    "zerg") ((total_by_race_zerg++));;
                 esac
 
                 case $difficulty in
-                    "Hard") ((wins_by_difficulty_hard++));;
-                    "VeryHard") ((wins_by_difficulty_veryhard++));;
+                    "Hard") ((total_by_difficulty_hard++));;
+                    "VeryHard") ((total_by_difficulty_veryhard++));;
                 esac
 
                 case $map in
-                    "CactusValleyLE") ((wins_by_map_cactus++));;
-                    "BelShirVestigeLE") ((wins_by_map_belshir++));;
-                    "ProximaStationLE") ((wins_by_map_proxima++));;
+                    "CactusValleyLE") ((total_by_map_cactus++));;
+                    "BelShirVestigeLE") ((total_by_map_belshir++));;
+                    "ProximaStationLE") ((total_by_map_proxima++));;
                 esac
-                ((wins++))
-            fi
-            ((total_games++))
+
+                if [[ $result == *"Won"* ]]; then
+                    case $race in
+                        "terran") ((wins_by_race_terran++));;
+                        "protoss") ((wins_by_race_protoss++));;
+                        "zerg") ((wins_by_race_zerg++));;
+                    esac
+
+                    case $difficulty in
+                        "Hard") ((wins_by_difficulty_hard++));;
+                        "VeryHard") ((wins_by_difficulty_veryhard++));;
+                    esac
+
+                    case $map in
+                        "CactusValleyLE") ((wins_by_map_cactus++));;
+                        "BelShirVestigeLE") ((wins_by_map_belshir++));;
+                        "ProximaStationLE") ((wins_by_map_proxima++));;
+                    esac
+                    ((wins++))
+                fi
+                ((total_games++))
+            done
         done
     done
 done
@@ -108,7 +106,6 @@ echo -e "\nWin Rates by Difficulty:" >> $output_file
 echo "==================" >> $output_file
 win_rate_hard=$(bc <<< "scale=2; $wins_by_difficulty_hard*100/$total_by_difficulty_hard")
 win_rate_veryhard=$(bc <<< "scale=2; $wins_by_difficulty_veryhard*100/$total_by_difficulty_veryhard")
-echo "Hard: $win_rate_hard%" >> $output_file
 echo "VeryHard: $win_rate_veryhard%" >> $output_file
 
 echo -e "\nWin Rates by Map:" >> $output_file
