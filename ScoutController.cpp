@@ -1,6 +1,6 @@
-#include "BasicSc2Bot.h"
+#include "OnPhone.h"
 
-ScoutController::ScoutController(BasicSc2Bot &bot) : UnitController(bot) {};
+ScoutController::ScoutController(OnPhone &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the scout unit.

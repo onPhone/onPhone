@@ -1,3 +1,5 @@
+#pragma once
+
 #include "cpp-sc2/include/sc2api/sc2_common.h"
 #include "cpp-sc2/include/sc2api/sc2_interfaces.h"
 #include "cpp-sc2/include/sc2api/sc2_typeenums.h"

@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 if not exist build mkdir build
 cd build
 cmake ../ -G "Visual Studio 17 2022"
-msbuild .\BasicSc2Bot.sln
+msbuild .\OnPhone.sln
 cd ..
 
 :: Output file for statistics
@@ -47,7 +47,7 @@ for /l %%N in (1,1,%runs%) do (
 
             :: Run the game and capture output
             echo Running OnPhone vs %%R : VeryHard on %%M
-            .\build\bin\BasicSc2Bot.exe -c -a %%R -d VeryHard -m %%M.SC2Map > ../../log.txt
+            .\build\bin\OnPhone.exe -c -a %%R -d VeryHard -m %%M.SC2Map > ../../log.txt
             echo Game run complete!
 
             :: Extract result from game output

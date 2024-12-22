@@ -1,11 +1,10 @@
-#ifndef ATTACK_CONTROLLER_H
-#define ATTACK_CONTROLLER_H
+#pragma once
 
 #include "UnitController.h"
 #include "sc2-includes.h"
 
 struct AttackController : public UnitController {
-    AttackController(BasicSc2Bot &bot);
+    AttackController(OnPhone &bot);
     void step(AllyUnit &unit);
     void underAttack(AllyUnit &unit);
     void onDeath(AllyUnit &unit);
@@ -17,5 +16,3 @@ struct AttackController : public UnitController {
     bool isAttacking = false;
     float approachDistance = 30.0f;
 };
-
-#endif // ATTACK_CONTROLLER_H

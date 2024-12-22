@@ -1,5 +1,4 @@
-#ifndef ALLYUNIT_H
-#define ALLYUNIT_H
+#pragma once
 
 #include "enums_constants.h"
 #include "sc2-includes.h"
@@ -17,5 +16,3 @@ struct AllyUnit {
     bool underAttack() const;
     bool isMoving() const;
 };
-
-#endif // ALLYUNIT_H

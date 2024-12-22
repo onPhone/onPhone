@@ -1,5 +1,4 @@
-#ifndef UNITGROUP_H
-#define UNITGROUP_H
+#pragma once
 
 #include "enums_constants.h"
 #include "sc2-includes.h"
@@ -16,5 +15,3 @@ struct UnitGroup {
     UnitGroup(ROLE unitRole, TASK unitTask = TASK::UNSET, int sizeTrigger = 0);
     void addUnit(AllyUnit unit);
 };
-
-#endif // UNITGROUP_H

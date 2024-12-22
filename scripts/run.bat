@@ -1,8 +1,8 @@
 if not exist build mkdir build
 cd build
 cmake ../ -G "Visual Studio 17 2022"
-msbuild .\BasicSc2Bot.sln
+msbuild .\OnPhone.sln
 cd ..
 set /p race="Enter race (terran, protoss, zerg): "
 set /p difficulty="Enter difficulty (VeryEasy, Easy, Medium, Hard, VeryHard): "
-.\build\bin\BasicSc2Bot.exe -c -a %race% -d %difficulty% -m CactusValleyLE.SC2Map
+.\build\bin\OnPhone.exe -c -a %race% -d %difficulty% -m CactusValleyLE.SC2Map

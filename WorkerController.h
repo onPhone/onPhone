@@ -1,11 +1,10 @@
-#ifndef WORKER_CONTROLLER_H
-#define WORKER_CONTROLLER_H
+#pragma once
 
 #include "UnitController.h"
 #include "sc2-includes.h"
 
 struct WorkerController : public UnitController {
-    WorkerController(BasicSc2Bot &bot);
+    WorkerController(OnPhone &bot);
     void step(AllyUnit &unit);
     void underAttack(AllyUnit &unit);
     void onDeath(AllyUnit &unit);
@@ -15,5 +14,3 @@ struct WorkerController : public UnitController {
     const sc2::Unit *most_dangerous_all = nullptr;
     const sc2::Unit *most_dangerous_ground = nullptr;
 };
-
-#endif // WORKER_CONTROLLER_H
