@@ -1,11 +1,11 @@
-#include "BasicSc2Bot.h"
+#include "OnPhone.h"
 #include "MasterController.h"
 
 #include <cstddef>
 #include <iostream>
 #include <limits>
 
-BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
+OnPhone::OnPhone() : controller(*this) {};
 
 /**
  * @brief Initializes the build order for the Zerg bot.
@@ -17,7 +17,7 @@ BasicSc2Bot::BasicSc2Bot() : controller(*this) {};
  * - Producing combat units like zerglings and roaches
  * - Researching upgrades
  */
-void BasicSc2Bot::OnGameStart() {
+void OnPhone::OnGameStart() {
     const auto &gameInfo = Observation()->GetGameInfo();
     startLoc = Observation()->GetStartLocation();
     std::cout << "Start location: (" << startLoc.x << ", " << startLoc.y << ")\n";
@@ -44,29 +44,29 @@ void BasicSc2Bot::OnGameStart() {
 
     constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].push_back(
       Observation()->GetUnits(Unit::Alliance::Self, IsUnit(UNIT_TYPEID::ZERG_HATCHERY))[0]);
-    buildOrder.push_back({13, std::bind(&BasicSc2Bot::BuildOverlord, this)});
-    buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildExtractor, this)});
-    buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
-    buildOrder.push_back({17, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+    buildOrder.push_back({13, std::bind(&OnPhone::BuildOverlord, this)});
+    buildOrder.push_back({16, std::bind(&OnPhone::BuildExtractor, this)});
+    buildOrder.push_back({16, std::bind(&OnPhone::BuildSpawningPool, this)});
+    buildOrder.push_back({17, std::bind(&OnPhone::BuildHatchery, this)});
     for(int i = 0; i < 3; ++i) {
-        buildOrder.push_back({16, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        buildOrder.push_back({16, std::bind(&OnPhone::BuildZergling, this)});
     }
-    buildOrder.push_back({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
-    buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoachWarren, this)});
-    buildOrder.push_back({21, std::bind(&BasicSc2Bot::ResearchMetabolicBoost, this)});
-    buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildOverlord, this)});
+    buildOrder.push_back({19, std::bind(&OnPhone::BuildQueen, this)});
+    buildOrder.push_back({21, std::bind(&OnPhone::BuildRoachWarren, this)});
+    buildOrder.push_back({21, std::bind(&OnPhone::ResearchMetabolicBoost, this)});
+    buildOrder.push_back({21, std::bind(&OnPhone::BuildOverlord, this)});
     for(int i = 0; i < 4; ++i) {
-        buildOrder.push_back({21, std::bind(&BasicSc2Bot::BuildRoach, this)});
+        buildOrder.push_back({21, std::bind(&OnPhone::BuildRoach, this)});
     }
-    buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildOverlord, this)});
+    buildOrder.push_back({29, std::bind(&OnPhone::BuildOverlord, this)});
     for(int i = 0; i < 5; ++i) {
-        buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        buildOrder.push_back({29, std::bind(&OnPhone::BuildZergling, this)});
     }
-    buildOrder.push_back({34, std::bind(&BasicSc2Bot::BuildRavager, this)});
+    buildOrder.push_back({34, std::bind(&OnPhone::BuildRavager, this)});
     for(int i = 0; i < 5; ++i) {
-        buildOrder.push_back({29, std::bind(&BasicSc2Bot::BuildZergling, this)});
+        buildOrder.push_back({29, std::bind(&OnPhone::BuildZergling, this)});
     }
-    buildOrder.push_back({19, std::bind(&BasicSc2Bot::BuildQueen, this)});
+    buildOrder.push_back({19, std::bind(&OnPhone::BuildQueen, this)});
 }
 
 /**
@@ -76,7 +76,7 @@ void BasicSc2Bot::OnGameStart() {
  * executing the current build order. It ensures that the bot continuously
  * progresses through its planned strategy by calling ExecuteBuildOrder().
  */
-void BasicSc2Bot::OnStep() {
+void OnPhone::OnStep() {
     GetEnemyUnitLocations();
     ExecuteBuildOrder();
     this->controller.step();
@@ -91,7 +91,7 @@ void BasicSc2Bot::OnStep() {
  *
  * @param unit Pointer to the destroyed unit
  */
-void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
+void OnPhone::OnUnitDestroyed(const Unit *unit) {
     if((unit->alliance == Unit::Alliance::Enemy)
        && (unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER
            || unit->unit_type == UNIT_TYPEID::PROTOSS_NEXUS
@@ -103,29 +103,29 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
     } else if(unit->alliance != Unit::Alliance::Enemy) {
         switch(unit->unit_type.ToType()) {
         case UNIT_TYPEID::ZERG_ZERGLING:
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildZergling, this)});
+            buildOrder.push_back({0, std::bind(&OnPhone::BuildZergling, this)});
             break;
         case UNIT_TYPEID::ZERG_ROACH:
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
+            buildOrder.push_back({0, std::bind(&OnPhone::BuildRoach, this)});
             break;
         case UNIT_TYPEID::ZERG_RAVAGER:
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRoach, this)});
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildRavager, this)});
+            buildOrder.push_back({0, std::bind(&OnPhone::BuildRoach, this)});
+            buildOrder.push_back({0, std::bind(&OnPhone::BuildRavager, this)});
             break;
         case UNIT_TYPEID::ZERG_QUEEN:
-            buildOrder.push_back({0, std::bind(&BasicSc2Bot::BuildQueen, this)});
+            buildOrder.push_back({0, std::bind(&OnPhone::BuildQueen, this)});
             break;
         case UNIT_TYPEID::ZERG_EXTRACTOR:
             OnBuildingDestruction(unit);
-            buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildExtractor, this)});
+            buildOrder.push_front({0, std::bind(&OnPhone::BuildExtractor, this)});
             break;
         case UNIT_TYPEID::ZERG_HATCHERY:
             OnBuildingDestruction(unit);
-            buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildHatchery, this)});
+            buildOrder.push_front({0, std::bind(&OnPhone::BuildHatchery, this)});
             break;
         case UNIT_TYPEID::ZERG_SPAWNINGPOOL:
             OnBuildingDestruction(unit);
-            buildOrder.push_front({0, std::bind(&BasicSc2Bot::BuildSpawningPool, this)});
+            buildOrder.push_front({0, std::bind(&OnPhone::BuildSpawningPool, this)});
             break;
         default: break;
         }
@@ -140,7 +140,7 @@ void BasicSc2Bot::OnUnitDestroyed(const Unit *unit) {
  *
  * @param unit Pointer to the newly created unit.
  */
-void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
+void OnPhone::OnUnitCreated(const Unit *unit) {
     switch(unit->unit_type.ToType()) {
     case UNIT_TYPEID::ZERG_QUEEN: {
         this->Workers->addUnit(AllyUnit(unit, TASK::UNSET, this->Workers));
@@ -184,7 +184,7 @@ void BasicSc2Bot::OnUnitCreated(const Unit *unit) {
  *
  * @param unit Pointer to the newly constructed building.
  */
-void BasicSc2Bot::OnBuildingConstructionComplete(const Unit *unit) {
+void OnPhone::OnBuildingConstructionComplete(const Unit *unit) {
     constructedBuildings[GetBuildingIndex(unit->unit_type)].push_back(unit);
     if(unit->unit_type == UNIT_TYPEID::ZERG_EXTRACTOR) { AssignWorkersToExtractor(unit); }
 }
@@ -197,7 +197,7 @@ void BasicSc2Bot::OnBuildingConstructionComplete(const Unit *unit) {
  *
  * @param unit Pointer to the destroyed building.
  */
-void BasicSc2Bot::OnBuildingDestruction(const Unit *unit) {
+void OnPhone::OnBuildingDestruction(const Unit *unit) {
     for(auto it = constructedBuildings[GetBuildingIndex(unit->unit_type)].begin();
         it != constructedBuildings[GetBuildingIndex(unit->unit_type)].end(); ++it) {
         if((*it)->tag == unit->tag) {
@@ -219,7 +219,7 @@ void BasicSc2Bot::OnBuildingDestruction(const Unit *unit) {
  * This method ensures continuous unit production by defaulting to Drone
  * construction when the build order cannot be followed.
  */
-void BasicSc2Bot::ExecuteBuildOrder() {
+void OnPhone::ExecuteBuildOrder() {
     const int currentSupply = Observation()->GetFoodUsed();
     const int maxSupply = Observation()->GetFoodCap();
 
@@ -253,7 +253,7 @@ void BasicSc2Bot::ExecuteBuildOrder() {
  * to inject larvae into hatcheries. If a queen is available, it is commanded
  * to inject larvae into the hatchery closest to it.
  */
-void BasicSc2Bot::tryInjection() {
+void OnPhone::tryInjection() {
     const ObservationInterface *observation = Observation();
 
     Units queens = observation->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
@@ -305,7 +305,7 @@ void BasicSc2Bot::tryInjection() {
  * @return true if a Drone was successfully queued for production, false
  * otherwise.
  */
-bool BasicSc2Bot::BuildDrone() {
+bool OnPhone::BuildDrone() {
     const ObservationInterface *observation = Observation();
 
     if(observation->GetMinerals() < DRONE_MINERAL_COST
@@ -334,7 +334,7 @@ bool BasicSc2Bot::BuildDrone() {
  * @return true if an Overlord was successfully queued for production or has
  * been built before, false otherwise.
  */
-bool BasicSc2Bot::BuildOverlord() {
+bool OnPhone::BuildOverlord() {
     const ObservationInterface *observation = Observation();
 
     if(observation->GetMinerals() < OVERLORD_MINERAL_COST) { return false; }
@@ -360,7 +360,7 @@ bool BasicSc2Bot::BuildOverlord() {
  * @return true if a Zergling was successfully queued for production or has been
  * built before, false otherwise.
  */
-bool BasicSc2Bot::BuildZergling() {
+bool OnPhone::BuildZergling() {
     const ObservationInterface *observation = Observation();
 
     if(observation->GetMinerals() < ZERGLING_MINERAL_COST
@@ -392,7 +392,7 @@ bool BasicSc2Bot::BuildZergling() {
  * @return true if a Queen was successfully queued for production or has been
  * built before, false otherwise.
  */
-bool BasicSc2Bot::BuildQueen() {
+bool OnPhone::BuildQueen() {
     const ObservationInterface *observation = Observation();
 
     if(observation->GetMinerals() < QUEEN_MINERAL_COST
@@ -420,7 +420,7 @@ bool BasicSc2Bot::BuildQueen() {
  * @return true if a Roach was successfully queued for production or has been
  * built before, false otherwise.
  */
-bool BasicSc2Bot::BuildRoach() {
+bool OnPhone::BuildRoach() {
     const ObservationInterface *observation = Observation();
 
     if(observation->GetMinerals() < ROACH_MINERAL_COST
@@ -453,7 +453,7 @@ bool BasicSc2Bot::BuildRoach() {
  * @return true if a Ravager was successfully queued for production or has been
  * built before, false otherwise.
  */
-bool BasicSc2Bot::BuildRavager() {
+bool OnPhone::BuildRavager() {
     const ObservationInterface *observation = Observation();
 
     if(observation->GetMinerals() < RAVAGER_MINERAL_COST
@@ -483,7 +483,7 @@ bool BasicSc2Bot::BuildRavager() {
  * @return true if a Spawning Pool was successfully queued for construction or
  * has been built before, false otherwise.
  */
-bool BasicSc2Bot::BuildSpawningPool() {
+bool OnPhone::BuildSpawningPool() {
     const ObservationInterface *observation = Observation();
     if(observation->GetMinerals() < SPAWNINGPOOL_COST) return false;
 
@@ -511,7 +511,7 @@ bool BasicSc2Bot::BuildSpawningPool() {
  * @param unit The unit to check
  * @return true if the unit is a vespene geyser, false otherwise
  */
-bool BasicSc2Bot::IsGeyser(const Unit &unit) {
+bool OnPhone::IsGeyser(const Unit &unit) {
     switch(unit.unit_type.ToType()) {
     case UNIT_TYPEID::NEUTRAL_VESPENEGEYSER:
     case UNIT_TYPEID::NEUTRAL_PROTOSSVESPENEGEYSER:
@@ -533,7 +533,7 @@ bool BasicSc2Bot::IsGeyser(const Unit &unit) {
  * @return true if an Extractor was successfully queued for construction or
  * has been built before, false otherwise.
  */
-bool BasicSc2Bot::BuildExtractor() {
+bool OnPhone::BuildExtractor() {
     const ObservationInterface *observation = Observation();
     if(observation->GetMinerals() < EXTRACTOR_COST) return false;
 
@@ -575,7 +575,7 @@ bool BasicSc2Bot::BuildExtractor() {
  *
  * @param extractor Pointer to the Extractor unit to assign workers to.
  */
-void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
+void OnPhone::AssignWorkersToExtractor(const Unit *extractor) {
     int assignedWorkers = 0;
     for(auto &worker : this->Workers->units) {
         if(assignedWorkers >= MAX_EXTRACTOR_WORKERS) break;
@@ -595,7 +595,7 @@ void BasicSc2Bot::AssignWorkersToExtractor(const Unit *extractor) {
  *
  * @return bool Returns true if the build command was issued, false otherwise.
  */
-bool BasicSc2Bot::BuildHatchery() {
+bool OnPhone::BuildHatchery() {
     const ObservationInterface *observation = Observation();
     if(observation->GetMinerals() < HATCHERY_COST) return false;
 
@@ -628,7 +628,7 @@ bool BasicSc2Bot::BuildHatchery() {
  *
  * @return bool Returns true if the build command was issued, false otherwise.
  */
-bool BasicSc2Bot::BuildRoachWarren() {
+bool OnPhone::BuildRoachWarren() {
     const ObservationInterface *observation = Observation();
     if(observation->GetMinerals() < ROACHWARREN_COST) return false;
 
@@ -659,7 +659,7 @@ bool BasicSc2Bot::BuildRoachWarren() {
  * @return bool Returns true if the research command was issued, false
  * otherwise.
  */
-bool BasicSc2Bot::ResearchMetabolicBoost() {
+bool OnPhone::ResearchMetabolicBoost() {
     const ObservationInterface *observation = Observation();
     const auto &spawning_pool
       = constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_SPAWNINGPOOL)];
@@ -687,7 +687,7 @@ bool BasicSc2Bot::ResearchMetabolicBoost() {
  * @return Point2D The coordinates where a new Hatchery can be placed for
  * expansion. Returns (0, 0) if no suitable location is found.
  */
-Point2D BasicSc2Bot::FindExpansionLocation() {
+Point2D OnPhone::FindExpansionLocation() {
     const ObservationInterface *observation = Observation();
     Point2D startLocation;
     if(constructedBuildings[GetBuildingIndex(UNIT_TYPEID::ZERG_HATCHERY)].size() > 0) {
@@ -733,7 +733,7 @@ Point2D BasicSc2Bot::FindExpansionLocation() {
  * @return Point2D The coordinates where the Hatchery can be placed, or (0,0) if no valid location
  * found
  */
-Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
+Point2D OnPhone::FindHatcheryPlacement(const Unit *mineral_field) {
     const Point2D mineral_pos = mineral_field->pos;
     const Point2D likely_offsets[] = {Point2D(7, 0), Point2D(-7, 0), Point2D(0, 7), Point2D(0, -7)};
 
@@ -752,7 +752,7 @@ Point2D BasicSc2Bot::FindHatcheryPlacement(const Unit *mineral_field) {
  * @return Point2D The coordinates where the building can be placed.
  *         Returns (0, 0) if no suitable location is found.
  */
-Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
+Point2D OnPhone::FindPlacementForBuilding(ABILITY_ID ability_type) {
     static int dx[] = {1, 0, -1, 0};
     static int dy[] = {0, 1, 0, -1};
     if(right) {
@@ -795,7 +795,7 @@ Point2D BasicSc2Bot::FindPlacementForBuilding(ABILITY_ID ability_type) {
  * on whether they are buildings.
  *
  */
-void BasicSc2Bot::GetEnemyUnitLocations() {
+void OnPhone::GetEnemyUnitLocations() {
     Point2D scoutControllerEnemyLoc = this->controller.scout_controller.foundEnemyLocation;
     if(scoutControllerEnemyLoc.x != 0 && scoutControllerEnemyLoc.y != 0) {
         enemyLoc = scoutControllerEnemyLoc;
@@ -824,7 +824,7 @@ void BasicSc2Bot::GetEnemyUnitLocations() {
  *
  * @return Units A collection of Unit objects representing idle larva.
  */
-Units BasicSc2Bot::GetIdleLarva() {
+Units OnPhone::GetIdleLarva() {
     return Observation()->GetUnits(Unit::Alliance::Self, [](const Unit &unit) {
         return unit.unit_type == UNIT_TYPEID::ZERG_LARVA && unit.orders.empty();
     });
@@ -836,7 +836,7 @@ Units BasicSc2Bot::GetIdleLarva() {
  * @param type The UNIT_TYPEID of the building to search for.
  * @return int The index of the building type in constructedBuildings.
  */
-int BasicSc2Bot::GetBuildingIndex(UNIT_TYPEID type) {
+int OnPhone::GetBuildingIndex(UNIT_TYPEID type) {
     switch(type) {
     case UNIT_TYPEID::ZERG_HATCHERY: return 0;
     case UNIT_TYPEID::ZERG_EXTRACTOR: return 1;
@@ -852,7 +852,7 @@ int BasicSc2Bot::GetBuildingIndex(UNIT_TYPEID type) {
  * Prints game statistics including total game loops, game duration in seconds,
  * and the match result (Win/Loss/Tie).
  */
-void BasicSc2Bot::OnGameEnd() {
+void OnPhone::OnGameEnd() {
     const ObservationInterface *observation = Observation();
     std::cout << "Game ended after: " << observation->GetGameLoop() << " loops " << std::endl;
     std::cout << "Total game time: " << observation->GetGameLoop() / 22.4 << " seconds"

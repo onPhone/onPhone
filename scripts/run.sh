@@ -53,4 +53,4 @@ if [ ! -d "build" ]; then
 fi
 
 cd build && make && cd ..
-./build/bin/BasicSc2Bot -c -a $race -d $difficulty -m $map.SC2Map
+./build/bin/OnPhone -c -a $race -d $difficulty -m $map.SC2Map

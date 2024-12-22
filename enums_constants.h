@@ -1,5 +1,4 @@
-#ifndef ENUMS_H
-#define ENUMS_H
+#pragma once
 
 // game constants
 #define EPSILON 0.000001
@@ -46,5 +45,3 @@ enum class TASK {
     MOVE,
     RALLY
 };
-
-#endif // ENUMS_H

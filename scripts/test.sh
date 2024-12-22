@@ -41,7 +41,7 @@ for race in "${races[@]}"; do
                 echo "Testing: OnPhone vs $race : $difficulty on $map (Run $i/5)" | tee -a $output_file
 
                 # Run the game and capture output
-                game_output=$(timeout 500s ./build/bin/BasicSc2Bot -c -a "$race" -d "$difficulty" -m "$map.SC2Map")
+                game_output=$(timeout 500s ./build/bin/OnPhone -c -a "$race" -d "$difficulty" -m "$map.SC2Map")
 
                 # Extract result from game output
                 result=$(echo "$game_output" | grep "Result:")

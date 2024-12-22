@@ -33,7 +33,7 @@ mkdir build && cd build
 cmake ../ -G "Visual Studio 17 2022"
 
 # Build the project using Visual Studio.
-start BasicSc2Bot.sln
+start OnPhone.sln
 ```
 
 ## Mac
@@ -99,10 +99,10 @@ You can find the build target under the `bin` directory. For example, in your ro
 
 ```shell
 # Windows
-./build/bin/BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+./build/bin/OnPhone.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
 
 # Mac
-./build/bin/BasicSc2Bot -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+./build/bin/OnPhone -c -a zerg -d Hard -m CactusValleyLE.SC2Map
 ```
 
 will result in the bot playing against the zerg built-in AI on hard difficulty on the map CactusValleyLE.

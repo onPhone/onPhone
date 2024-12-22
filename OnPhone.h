@@ -1,5 +1,4 @@
-#ifndef BASIC_SC2_BOT_H_
-#define BASIC_SC2_BOT_H_
+#pragma once
 
 #include "AllyUnit.h"
 #include "MasterController.h"
@@ -9,9 +8,9 @@
 
 using namespace sc2;
 
-class BasicSc2Bot : public Agent {
+class OnPhone : public Agent {
   public:
-    BasicSc2Bot();
+    OnPhone();
     virtual void OnGameStart() override;
     virtual void OnGameEnd() final;
     virtual void OnStep() override;
@@ -57,5 +56,3 @@ class BasicSc2Bot : public Agent {
     bool ResearchMetabolicBoost();
     void tryInjection();
 };
-
-#endif

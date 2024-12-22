@@ -1,4 +1,4 @@
-#include "BasicSc2Bot.h"
+#include "OnPhone.h"
 
 UnitGroup::UnitGroup(ROLE unitRole, TASK unitTask, int sizeTrigger)
     : unitRole(unitRole), unitTask(unitTask), sizeTrigger(sizeTrigger) {};

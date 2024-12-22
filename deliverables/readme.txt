@@ -32,7 +32,7 @@ Depending on your operating system, follow the appropriate instructions to compi
 
      cmake ../ -G "Visual Studio 17 2022"
 
-  3. Open the generated solution file (BasicSc2Bot.sln) in Visual Studio and build the
+  3. Open the generated solution file (OnPhone.sln) in Visual Studio and build the
      project by selecting "Build" from the menu or pressing Ctrl+Shift+B.
 
 - Mac:
@@ -81,12 +81,12 @@ After compiling, you can run the bot against the built-in AI using the following
 Windows:
 --------
 To run the bot against the Zerg built-in AI on hard difficulty on the map CactusValleyLE:
-  ./build/bin/BasicSc2Bot.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+  ./build/bin/OnPhone.exe -c -a zerg -d Hard -m CactusValleyLE.SC2Map
 
 Mac/Linux:
 ---------
 To run the bot with the same parameters:
-  ./build/bin/BasicSc2Bot -c -a zerg -d Hard -m CactusValleyLE.SC2Map
+  ./build/bin/OnPhone -c -a zerg -d Hard -m CactusValleyLE.SC2Map
 
 
 5. Automated Testing

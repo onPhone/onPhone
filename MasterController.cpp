@@ -1,6 +1,6 @@
-#include "BasicSc2Bot.h"
+#include "OnPhone.h"
 
-MasterController::MasterController(BasicSc2Bot &bot)
+MasterController::MasterController(OnPhone &bot)
     : bot(bot), worker_controller(bot), scout_controller(bot), attack_controller(bot) {};
 
 /**

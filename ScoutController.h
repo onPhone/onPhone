@@ -1,11 +1,10 @@
-#ifndef SCOUT_CONTROLLER_H
-#define SCOUT_CONTROLLER_H
+#pragma once
 
 #include "UnitController.h"
 #include "sc2-includes.h"
 
 struct ScoutController : public UnitController {
-    ScoutController(BasicSc2Bot &bot);
+    ScoutController(OnPhone &bot);
     void step(AllyUnit &unit);
     void scoutBase(AllyUnit &unit);
     void scoutAll(AllyUnit &unit);
@@ -21,5 +20,3 @@ struct ScoutController : public UnitController {
     sc2::Point2D foundEnemyLocation;
     std::size_t zerglingCount = 0;
 };
-
-#endif // SCOUT_CONTROLLER_H

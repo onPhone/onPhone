@@ -1,6 +1,6 @@
-#include "BasicSc2Bot.h"
+#include "OnPhone.h"
 
-AttackController::AttackController(BasicSc2Bot &bot) : UnitController(bot) {};
+AttackController::AttackController(OnPhone &bot) : UnitController(bot) {};
 
 /**
  * @brief Steps the given ally attack unit.

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(BasicSc2Bot)
+project(OnPhone)
 
 # Use bin as the directory for all executables.
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
@@ -32,7 +32,7 @@ set(BUILD_API_TESTS OFF CACHE INTERNAL "" FORCE)
 
 add_subdirectory("cpp-sc2")
 
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT BasicSc2Bot)
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT OnPhone)
 set_target_properties(sc2api PROPERTIES FOLDER sc2api)
 set_target_properties(sc2lib PROPERTIES FOLDER sc2api)
 set_target_properties(sc2protocol PROPERTIES FOLDER sc2api)
@@ -53,7 +53,7 @@ if (NOT APPLE)
 endif ()
 
 
-file(GLOB SOURCES_BASICSC2BOT "*.cpp" "*.h")
+file(GLOB SOURCES_ONPHONE "*.cpp" "*.h")
 # Include directories
 include_directories(SYSTEM
     ${PROJECT_SOURCE_DIR}/cpp-sc2/include
@@ -62,7 +62,7 @@ include_directories(SYSTEM
 )
 
 # Create the executable.
-add_executable(BasicSc2Bot ${SOURCES_BASICSC2BOT})
-target_link_libraries(BasicSc2Bot
+add_executable(OnPhone ${SOURCES_ONPHONE})
+target_link_libraries(OnPhone
     sc2api sc2lib sc2utils
 )
