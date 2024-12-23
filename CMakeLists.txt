@@ -1,68 +1,63 @@
 cmake_minimum_required(VERSION 3.6)
-
 project(OnPhone)
 
-# Use bin as the directory for all executables.
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-# Windows builds subdirectories Debug/Release.
-# These variables will overwrite that and put binaries in bin.
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_BINARY_DIR}/bin)
-
+# Set C++ standard
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Allow creating filters for projects in visual studio.
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+# Configure output directories
+set(OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIRECTORY})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIRECTORY})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIRECTORY})
 
-# Disable building of examples in the sc2api submodule.
+# Set output directories for all build types
+foreach(CONFIG_TYPE IN ITEMS DEBUG RELEASE MINSIZEREL RELWITHDEBINFO)
+    string(TOUPPER ${CONFIG_TYPE} CONFIG_TYPE)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CONFIG_TYPE} ${OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${CONFIG_TYPE} ${OUTPUT_DIRECTORY})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${CONFIG_TYPE} ${OUTPUT_DIRECTORY})
+endforeach()
+
+# Configure SC2 API
 set(BUILD_API_EXAMPLES OFF CACHE INTERNAL "" FORCE)
-# Disable building of tests in the sc2api submodule.
 set(BUILD_API_TESTS OFF CACHE INTERNAL "" FORCE)
-
 add_subdirectory("cpp-sc2")
 
+# Visual Studio configuration
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT OnPhone)
-set_target_properties(sc2api PROPERTIES FOLDER sc2api)
-set_target_properties(sc2lib PROPERTIES FOLDER sc2api)
-set_target_properties(sc2protocol PROPERTIES FOLDER sc2api)
-set_target_properties(sc2utils PROPERTIES FOLDER sc2api)
 
-set_target_properties(civetweb-c-library PROPERTIES FOLDER sc2api/contrib)
-set_target_properties(libprotobuf PROPERTIES FOLDER sc2api/contrib)
-set_target_properties(libprotobuf-lite PROPERTIES FOLDER sc2api/contrib)
-set_target_properties(libprotoc PROPERTIES FOLDER sc2api/contrib)
-set_target_properties(protoc PROPERTIES FOLDER sc2api/contrib)
+# Organize SC2 API targets
+foreach(TARGET sc2api sc2lib sc2protocol sc2utils)
+    set_target_properties(${TARGET} PROPERTIES FOLDER sc2api)
+endforeach()
 
-# SC2 API doesn't build SDL and ipv6 libs on OS X.
-if (NOT APPLE)
+# Organize contrib targets
+foreach(TARGET civetweb-c-library libprotobuf libprotobuf-lite libprotoc protoc)
+    set_target_properties(${TARGET} PROPERTIES FOLDER sc2api/contrib)
+endforeach()
+
+# Platform-specific targets
+if(NOT APPLE)
     set_target_properties(sc2renderer PROPERTIES FOLDER sc2api/utilities)
-    set_target_properties(ipv6-parse PROPERTIES FOLDER sc2api/contrib)
-    set_target_properties(SDL2main PROPERTIES FOLDER sc2api/contrib)
-    set_target_properties(SDL2-static PROPERTIES FOLDER sc2api/contrib)
-endif ()
+    foreach(TARGET ipv6-parse SDL2main SDL2-static)
+        set_target_properties(${TARGET} PROPERTIES FOLDER sc2api/contrib)
+    endforeach()
+endif()
 
+# Project source files
+file(GLOB SOURCES_ONPHONE "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.c")
+file(GLOB HEADERS_ONPHONE "${PROJECT_SOURCE_DIR}/includes/*.h")
 
-file(GLOB SOURCES_ONPHONE "*.cpp" "*.h")
 # Include directories
 include_directories(SYSTEM
+    ${PROJECT_SOURCE_DIR}/includes
     ${PROJECT_SOURCE_DIR}/cpp-sc2/include
     ${PROJECT_SOURCE_DIR}/cpp-sc2/contrib/protobuf/src
     ${PROJECT_BINARY_DIR}/cpp-sc2/generated
 )
 
-# Create the executable.
-add_executable(OnPhone ${SOURCES_ONPHONE})
-target_link_libraries(OnPhone
-    sc2api sc2lib sc2utils
-)
+# Create executable
+add_executable(OnPhone ${SOURCES_ONPHONE} ${HEADERS_ONPHONE})
+target_link_libraries(OnPhone sc2api sc2lib sc2utils)
