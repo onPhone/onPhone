@@ -1,6 +1,6 @@
 #pragma once
 
-#include "enums_constants.h"
+#include "constants.h"
 #include "sc2-includes.h"
 
 struct AllyUnit;
