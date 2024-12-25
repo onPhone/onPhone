@@ -1,6 +1,6 @@
 # onPhone : A SC2 Zerg Bot
 
-An adaptive Zerg bot for StarCraft II that implements dynamic build orders and intelligent unit control.
+An adaptive Zerg bot for StarCraft II that implements dynamic build orders and intelligent unit control. Test
 
 ## Features
 
